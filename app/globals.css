@@ -2,26 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f4e9d8; 
+  background-image: url('https://www.transparenttextures.com/patterns/old-paper.png');
+  color: #4a4a4a;
+  font-family: 'Times New Roman', Times, serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+.leaflet-popup-content-wrapper {
+  background-color: #f4e9d8;
+  color: #4a4a4a;
+  border-radius: 0;
+  border: 1px solid #8b4513;
+}
+
+.leaflet-popup-content h3 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #8b4513;
+}
+
+.leaflet-popup-content p {
+  margin: 0.25rem 0;
+}
+
+.leaflet-popup-tip {
+  background-color: #8b4513;
+}
+
+.timeline-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  background-color: #f4e9d8;
+  border-top: 1px solid #8b4513;
+}
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
 }
