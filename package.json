@@ -1,11 +1,18 @@
 {
   "name": "canaan",
+  "name": "canaan",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed"
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -37,6 +44,8 @@
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
     "lru-cache": "^11.1.0",
+    "lucide-react": "^0.539.0",
+    "maplibre-gl": "^4.0.2",
     "lucide-react": "^0.539.0",
     "maplibre-gl": "^4.0.2",
     "next": "14.2.30",
