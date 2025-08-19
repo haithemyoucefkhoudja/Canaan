@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Event {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  description    String?
+  start_date     DateTime?
+  end_date       DateTime?
+  location       String?
+  coordinates    String?
+  tags           String[]
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @default(now()) @updatedAt
+  actor_links    ActorLink[]
+  source_events  EventRelationship[] @relation("SourceEvent")
+  target_events  EventRelationship[] @relation("TargetEvent")
+  location_links LocationLink[]
+  media_assets   MediaAsset[]
+  quizzes        Quiz[]
+  source_links   SourceLink[]
+
+  @@map("event")
+}
+
+model EventRelationship {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_event_id   String   @db.Uuid
+  target_event_id   String   @db.Uuid
+  relationship_type String
+  created_at        DateTime @default(now())
+  source_event      Event    @relation("SourceEvent", fields: [source_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  target_event      Event    @relation("TargetEvent", fields: [target_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([source_event_id, target_event_id, relationship_type])
+  @@map("event_relationship")
+}
+
+model MediaAsset {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id    String   @db.Uuid
+  asset_type  String
+  storage_url String
+  title       String?
+  source_text String?
+  embedding   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+  event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("media_asset")
+}
+
+model Quiz {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id   String   @db.Uuid
+  quiz_graph Json
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("quiz")
+}
+
+model Actor {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  actor_type     String
+  description    String?
+  birth_date     DateTime?
+  death_date     DateTime?
+  founded_date   DateTime?
+  dissolved_date DateTime?
+  nationality    String?
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @default(now()) @updatedAt
+  actor_links    ActorLink[]
+
+  @@map("actor")
+}
+
+model ActorLink {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id   String   @db.Uuid
+  event_id   String   @db.Uuid
+  role       String?
+  created_at DateTime @default(now())
+  actor      Actor    @relation(fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([actor_id, event_id])
+  @@map("actor_link")
+}
+
+model Location {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  description    String?
+  coordinates    String?
+  country        String?
+  region         String?
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @default(now()) @updatedAt
+  location_links LocationLink[]
+
+  @@map("location")
+}
+
+model LocationLink {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_id String   @db.Uuid
+  event_id    String   @db.Uuid
+  role        String?
+  created_at  DateTime @default(now())
+  event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  location    Location @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([location_id, event_id])
+  @@map("location_link")
+}
+
+model Source {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title        String
+  url          String
+  author       String
+  type         String
+  description  String
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  publish_date DateTime?    @db.Timestamptz(6)
+  is_embedded  Boolean      @default(false)
+  documents    Document[]
+  source_links SourceLink[]
+
+  @@map("source")
+}
+
+model SourceLink {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_id  String   @db.Uuid
+  event_id   String   @db.Uuid
+  relevance  String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  source     Source   @relation(fields: [source_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([source_id, event_id])
+  @@map("source_link")
+}
+
+model Document {
+  id         String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_id  String                      @db.Uuid
+  content    String
+  metadata   Json?
+  embedding  Unsupported("vector(768)")?
+  created_at DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at DateTime                    @default(now()) @updatedAt @db.Timestamptz(6)
+  source     Source                      @relation(fields: [source_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([embedding])
+  @@map("document")
+}

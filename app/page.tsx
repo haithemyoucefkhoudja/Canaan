@@ -1,10 +1,10 @@
+import { DashboardLayout } from "@/components/dashboard-layout"
+import { DashboardOverview } from "@/components/dashboard-overview"
 
-function page() {
+export default function HomePage() {
   return (
-    <div>
-        CODE FOR PALASTINE  
-    </div>
+      <div>
+        <h1>Canaan Project</h1>
+      </div>
   )
 }
-
-export default page

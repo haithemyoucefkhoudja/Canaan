@@ -1,9 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Work_Sans, Open_Sans } from "next/font/google"
-import "./globals.css"
-import { QueryProvider } from "@/lib/query-client"
-import { Toaster } from "@/components/ui/sonner"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 const workSans = Work_Sans({
   subsets: ["latin"],
@@ -20,22 +18,18 @@ const openSans = Open_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Historical Insights Dashboard",
+  title: "Dashboard Historical Insights Dashboard",
   description: "Manage complex historical data relationships and research",
   generator: "v0.app",
 }
 
-export default function RootLayout({
+export default function DashboardLayoutWrapper({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${workSans.variable} ${openSans.variable}`}>
-      <body className="antialiased">
-        <QueryProvider>{children}</QueryProvider>
-        <Toaster/>
-      </body>
-    </html>
+        <DashboardLayout>{children}</DashboardLayout>
+      
   )
 }
