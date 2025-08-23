@@ -452,4 +452,18 @@ model UserRewardBox {
   @@index([box_id])
   @@index([is_opened])
   @@map("user_reward_box")
+
+// ADD THIS ENTIRE NEW MODEL TO THE BOTTOM OF YOUR SCHEMA.PRISMA FILE
+
+model HistoricalPeriod {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  start_year  Int
+  end_year    Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("historical_period")
+
 }
