@@ -1,67 +1,138 @@
 "use client";
-
-import * as React from "react";
-import { useLoadingCallback } from "react-loading-hook";
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from "firebase/auth";
-import Link from "next/link";
-import { getFirebaseAuth } from "@/components/firebase-auth/firebase";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { MainTitle } from "../../ui/MainTitle";
-import { PasswordForm } from "../../ui/PasswordForm";
-import { PasswordFormValue } from "../../ui/PasswordForm/PasswordForm";
-import { Loader } from "lucide-react";
-import { appendRedirectParam } from "@/shared/redirect";
-import { useRedirectParam } from "@/shared/useRedirectParam";
-import { useRedirectAfterLogin } from "@/shared/useRedirectAfterLogin";
-import { loginWithCredential } from "@/api";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export function RegisterPage() {
-  const [hasLogged, setHasLogged] = React.useState(false);
-  const redirect = useRedirectParam();
-  const redirectAfterLogin = useRedirectAfterLogin();
+const FormSchema = z.object({
+  displayName: z.string().min(2, {
+    message: "Display name must be at least 2 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  password: z.string().min(6, {
+    message: "Password must be at least 6 characters.",
+  }),
+});
 
-  const [registerWithEmailAndPassword, isRegisterLoading, error] =
-    useLoadingCallback(async ({ email, password }: PasswordFormValue) => {
-      setHasLogged(false);
-      const auth = getFirebaseAuth();
-      const credential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+export default function RegisterPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
-      await loginWithCredential(credential);
-      await sendEmailVerification(credential.user);
-      redirectAfterLogin();
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      displayName: "",
+      email: "",
+      password: "",
+    },
+  });
 
-      setHasLogged(true);
-    });
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Registration successful",
+          description: "You have been successfully registered.",
+        });
+        router.push("/dashboard");
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Registration failed",
+          description: errorData.message || "An unknown error occurred.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "An error occurred",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
-    <div className={styles.page}>
-      <MainTitle>Register</MainTitle>
-      {hasLogged && (
-        <div className={styles.info}>
-          <span>
-            Redirecting to <strong>{redirect || "/"}</strong>
-          </span>
-          <Loader />
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-primary">Create an account</h1>
+          <p className="text-muted-foreground">
+            Enter your information to create an account
+          </p>
         </div>
-      )}
-      {!hasLogged && (
-        <PasswordForm
-          onSubmit={registerWithEmailAndPassword}
-          loading={isRegisterLoading}
-          error={error}
-        >
-          <Link href={appendRedirectParam("/login", redirect)}>
-            <Button disabled={isRegisterLoading}>Back to login</Button>
-          </Link>
-        </PasswordForm>
-      )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your Name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="name@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="******" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create account"}
+            </Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }
