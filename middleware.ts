@@ -7,16 +7,11 @@ import {
 } from "next-firebase-auth-edge";
 import { authConfig } from "./config/server-config";
 
-const PUBLIC_PATHS = [
-  "/login",
-  "/",
-  "/register",
-  "/join-us",
-  "/about",
-  "/posts", // For the /posts index page
-  /^\/posts\/[^/]+$/, // Matches /posts/any-slug
-  /^\/profile\/[^/]+$/, // Matches /profile/any-slug
-];
+const PUBLIC_PATHS = ["/login", "/", "/register", "/join-us", "/about"];
+
+// "/games", // For the /posts index page
+// /^\/posts\/[^/]+$/, // Matches /posts/any-slug
+// /^\/profile\/[^/]+$/, // Matches /profile/any-slug
 export async function middleware(request: NextRequest) {
   return authMiddleware(request, {
     loginPath: "/api/login",
@@ -38,20 +33,19 @@ export async function middleware(request: NextRequest) {
       // console.log("decodedToken:", decodedToken);
       // console.log("customToken:", customToken);
       // check token expiration
-      if (request.nextUrl.pathname == "/auth/login")
-        return redirectToHome(request);
+      if (request.nextUrl.pathname == "/login") return redirectToHome(request);
 
       // how to parse slug
       if (
         PUBLIC_PATHS.some((path) => {
-          if (path instanceof RegExp) {
-            return path.test(request.nextUrl.pathname);
+          if ((path as any) instanceof RegExp) {
+            return (path as any).test(request.nextUrl.pathname);
           }
           return path === request.nextUrl.pathname;
         })
       ) {
         return redirectToLogin(request, {
-          path: "/auth/login",
+          path: "/login",
           publicPaths: PUBLIC_PATHS,
         });
       }
@@ -64,7 +58,7 @@ export async function middleware(request: NextRequest) {
     },
     handleInvalidToken: async (_reason) => {
       return redirectToLogin(request, {
-        path: "/auth/login",
+        path: "/login",
         publicPaths: PUBLIC_PATHS,
       });
     },
@@ -72,7 +66,7 @@ export async function middleware(request: NextRequest) {
       console.error("Unhandled authentication error", { error });
 
       return redirectToLogin(request, {
-        path: "/auth/login",
+        path: "/login",
         publicPaths: PUBLIC_PATHS,
       });
     },
