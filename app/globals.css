@@ -106,6 +106,8 @@ body,
 		--chart-5: 27 87% 67%;
 		--radius: 0.5rem;
 
+		--sides: 1rem;
+
 		@screen md {
 			--sides: 1.5rem;
 			--modal-sides: 1rem;

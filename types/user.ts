@@ -17,12 +17,11 @@ export interface IAuthIdentity {
 	id_token: string;
 	custom_token?: string;
 }
-export type IUser = IAuthIdentity &
-	User & {
-		email_verified: boolean;
-		provider_id: string;
-		custom_claims: Claims;
-	};
+export type IUser = IAuthIdentity & {
+	email_verified: boolean;
+	provider_id: string;
+	custom_claims: Claims;
+};
 
 // =================================================================
 // The Solution

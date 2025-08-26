@@ -26,7 +26,7 @@ export function LatestProductCard({
 			)}
 		>
 			<Link
-				href={`/product/${product.handle}`}
+				href={`/games/${product.handle}`}
 				className="block size-full focus-visible:outline-none"
 				aria-label={`View ${product.title}`}
 				prefetch

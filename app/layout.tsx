@@ -40,6 +40,7 @@ export default async function RootLayout({
 		...authConfig,
 	});
 	const user = tokens ? await toUser(tokens) : null;
+
 	const collections: any[] = [
 		{ handle: "bingo-games", title: "Bingo Games" },
 		{ handle: "historical-quizzes", title: "Historical Quizzes" },

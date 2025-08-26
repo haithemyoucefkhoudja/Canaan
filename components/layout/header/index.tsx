@@ -38,7 +38,7 @@ export function Header({ collections }: HeaderProps) {
 				<LogoSvg className="w-auto h-6 max-md:place-self-center md:w-full md:h-auto max-w-96" />
 			</Link>
 			<nav className="flex gap-2 justify-end items-center md:col-span-9 xl:col-span-10">
-				<ul className="items-center gap-5 py-0.5 px-3 bg-background/10 rounded-sm backdrop-blur-md hidden md:flex">
+				<ul className="items-center gap-5 py-0.5 px-3 bg-background  rounded-sm backdrop-blur-md hidden md:flex">
 					{navItems.map((item) => (
 						<li key={item.href}>
 							<Link
