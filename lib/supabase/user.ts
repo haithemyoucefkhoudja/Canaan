@@ -20,9 +20,6 @@ export async function getOrCreateUserFromAuth(
 		.eq("id", id)
 		.single(); // .single() returns one record or null, perfect for this
 
-	console.log("🚀 ~ getOrCreateUserFromAuth ~ existingUser:", existingUser);
-
-	console.log("🚀 ~ getOrCreateUserFromAuth ~ selectError:", selectError);
 	if (selectError && selectError.code !== "PGRST116") {
 		// PGRST116 is the error code for "No rows found", which is expected.
 		// We throw any other unexpected errors.

@@ -5,8 +5,6 @@ import { AuthContext } from "./AuthContext";
 import { IUser } from "@/types/user";
 import { useQuery } from "@tanstack/react-query";
 import { Claims } from "next-firebase-auth-edge/auth/claims";
-import { setCustomUserClaims } from "@/lib/server/auth";
-import { refreshToken } from "@/lib/server/refresh-token";
 import { Card, CardContent } from "../ui/card";
 import { AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
@@ -20,13 +18,17 @@ const checkClaims = async (
 	customClaims?: Claims,
 	token?: string
 ) => {
+	console.log("🚀 ~ checkClaims ~ customClaims:", customClaims);
 	if (!userId || !customClaims || !token) return false;
-	if (!customClaims.app_role || customClaims.role) {
-		const claimsResult = await setCustomUserClaims(userId);
-		if (!claimsResult.success) {
-			throw new Error(claimsResult.error);
+
+	if (!customClaims.app_role || !customClaims.role) {
+		const claimsResult = await fetch("/api/custom-claims", {
+			method: "GET",
+		});
+		const res = await claimsResult.json();
+		if (!res.success) {
+			throw new Error(res.error);
 		}
-		await refreshToken(token);
 	}
 	return true;
 };

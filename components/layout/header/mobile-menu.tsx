@@ -9,6 +9,7 @@ import { navItems } from "./index";
 import { SidebarLinks } from "../sidebar/product-sidebar-links";
 import { ShopLinks } from "../shop-links";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { Hamburger, HamburgerIcon, Menu } from "lucide-react";
 
 interface MobileMenuProps {
 	collections: any[];
@@ -47,7 +48,7 @@ export default function MobileMenu({ collections }: MobileMenuProps) {
 				size="sm"
 				className="uppercase md:hidden"
 			>
-				Menu
+				<Menu className="h-6 w-6" />
 			</Button>
 
 			<AnimatePresence>

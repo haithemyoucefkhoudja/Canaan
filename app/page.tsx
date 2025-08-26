@@ -2,7 +2,7 @@ import { HomeSidebar } from "@/components/layout/sidebar/home-sidebar";
 import { PageLayout } from "@/components/layout/page-layout";
 import { LatestProductCard } from "@/components/layout/home-page-elements/latest-product-card";
 import { Badge } from "@/components/ui/badge";
-import { getLabelPosition } from "@/lib/utils";
+import LevelDrop from "@/components/gamification/level-drop";
 
 const gameCategories = [
 	{ handle: "bingo-games", title: "Bingo Games" },
@@ -38,7 +38,7 @@ const featuredGames = [
 	{
 		id: "3",
 		title: "Map Discovery",
-		handle: "map-discovery",
+		handle: "map",
 		description: "learn about historical discoveries and places",
 		featuredImage: {
 			url: "/map-discovery-game.png",
@@ -72,30 +72,23 @@ const featuredGames = [
 
 export default async function Home() {
 	const collections = gameCategories;
-	const featuredProducts = featuredGames;
 
-	const [lastProduct, ...restProducts] = featuredProducts;
+	const [lastGame, ...restGames] = featuredGames;
 	return (
 		<PageLayout>
 			<div className="contents md:grid md:grid-cols-12 md:gap-sides">
 				<HomeSidebar collections={collections} />
 				<div className="flex relative flex-col grid-cols-2 col-span-8 w-full md:grid">
-					<div className="fixed top-0 left-0 z-10 w-full pointer-events-none base-grid py-sides">
-						<div className="col-span-8 col-start-5">
-							<div className="hidden px-6 lg:block">
-								<Badge variant="outline-secondary">latest drop</Badge>
-							</div>
-						</div>
-					</div>
-					{featuredProducts.length > 0 && (
+					<LevelDrop />
+					{featuredGames.length > 0 && (
 						<>
 							<LatestProductCard
 								className="col-span-2"
-								product={lastProduct}
+								product={lastGame}
 								principal
 							/>
 
-							{restProducts.map((product: any, index: number) => (
+							{restGames.map((product: any, index: number) => (
 								<LatestProductCard
 									className="col-span-1"
 									key={product.id}

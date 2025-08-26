@@ -6,6 +6,8 @@ import {
 	redirectToLogin,
 } from "next-firebase-auth-edge";
 import { authConfig } from "./config/server-config";
+import { getFirebaseAuth } from "next-firebase-auth-edge/lib/auth";
+import { refreshCookiesWithIdToken } from "next-firebase-auth-edge/next/cookies";
 
 const PUBLIC_PATHS = [
 	"/login",
@@ -16,6 +18,10 @@ const PUBLIC_PATHS = [
 	/^\/games\/[^/]+$/,
 ];
 
+const { setCustomUserClaims, getUser } = getFirebaseAuth(
+	authConfig.serviceAccount,
+	authConfig.apiKey
+);
 // "/games", // For the /posts index page
 // /^\/posts\/[^/]+$/, // Matches /posts/any-slug
 // /^\/profile\/[^/]+$/, // Matches /profile/any-slug
@@ -40,6 +46,42 @@ export async function middleware(request: NextRequest) {
 			// console.log("decodedToken:", decodedToken);
 			// console.log("customToken:", customToken);
 			// check token expiration
+
+			const user = await getUser(decodedToken.uid);
+			if (request.nextUrl.pathname === "/api/custom-claims" && user) {
+				const claims = {
+					app_role: "user",
+					role: "authenticated",
+				};
+				try {
+					await setCustomUserClaims(decodedToken.uid, claims);
+
+					const response = new NextResponse(
+						JSON.stringify({
+							success: true,
+						}),
+						{
+							status: 200,
+							headers: { "content-type": "application/json" },
+						}
+					);
+
+					await refreshCookiesWithIdToken(
+						token,
+						request.headers,
+						request.cookies,
+						authConfig
+					);
+					return response;
+				} catch (error: any) {
+					return new NextResponse(
+						JSON.stringify({
+							error: `Something wrong happened ${error.message}`,
+							sucess: false,
+						})
+					);
+				}
+			}
 			if (request.nextUrl.pathname == "/login") return redirectToHome(request);
 
 			// how to parse slug
