@@ -2,7 +2,7 @@
 /CODE-FOR-PALASTINE.code-workspace
 # dependencies
 /node_modules
-
+/firebase-project
 # next.js
 /.next/
 /out/
