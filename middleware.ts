@@ -9,14 +9,7 @@ import { authConfig } from "./config/server-config";
 import { getFirebaseAuth } from "next-firebase-auth-edge/lib/auth";
 import { refreshCookiesWithIdToken } from "next-firebase-auth-edge/next/cookies";
 
-const PUBLIC_PATHS = [
-	"/login",
-	"/",
-	"/register",
-	"/join-us",
-	"/about",
-	/^\/games\/[^/]+$/,
-];
+const PUBLIC_PATHS = ["/login", "/", "/register", "/join-us", "/about"];
 
 const { setCustomUserClaims, getUser } = getFirebaseAuth(
 	authConfig.serviceAccount,
