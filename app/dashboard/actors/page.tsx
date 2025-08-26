@@ -1,7 +1,5 @@
-import { ActorsManagement } from "@/components/actors-management"
+import { ActorsManagement } from "@/components/dashboard/actors-management";
 
 export default function ActorsPage() {
-  return (
-      <ActorsManagement />
-  )
+	return <ActorsManagement />;
 }

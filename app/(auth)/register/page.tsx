@@ -1,138 +1,234 @@
 "use client";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-const FormSchema = z.object({
-  displayName: z.string().min(2, {
-    message: "Display name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
-});
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+	FormItem,
+	Form,
+	FormMessage,
+	FormLabel,
+	FormControl,
+	FormField,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+	UserCredential,
+	createUserWithEmailAndPassword,
+	updateProfile,
+} from "firebase/auth";
+import { loginWithCredential } from "@/api/index";
+import { useLoadingCallback } from "react-loading-hook";
+import { getFirebaseAuth } from "@/components/firebase-auth/firebase";
+import { useRedirectAfterLogin } from "@/shared/useRedirectAfterLogin";
+
+import {
+	registerFormSchema,
+	RegisterFormValues,
+} from "@/lib/validations/auth-schema";
+import { toast } from "sonner";
+import { AuthLayout } from "@/components/auth/layout";
+import { setCustomUserClaims } from "@/lib/server/auth";
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
+	const [handleRegister, isRegistering, registerError] = useLoadingCallback(
+		async ({ email, passwordData, displayName }: RegisterFormValues) => {
+			const auth = getFirebaseAuth();
+			try {
+				const credential = await createUserWithEmailAndPassword(
+					auth,
+					email,
+					passwordData.password
+				);
+				await updateProfile(credential.user, { displayName });
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      displayName: "",
-      email: "",
-      password: "",
-    },
-  });
+				// Set custom claims using the server action
+				const claimsResult = await setCustomUserClaims(credential.user.uid);
+				if (!claimsResult.success) {
+					throw new Error(claimsResult.error);
+				}
+				await handleLogin(credential);
+			} catch (error: any) {
+				toast.error(
+					`Failed to register: ${error.message.split("Firebase: ")[1]}`
+				);
+				console.error("Error registering:", error);
+			}
+		}
+	);
 
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+	const redirectAfterLogin = useRedirectAfterLogin();
 
-      if (response.ok) {
-        toast({
-          title: "Registration successful",
-          description: "You have been successfully registered.",
-        });
-        router.push("/dashboard");
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Registration failed",
-          description: errorData.message || "An unknown error occurred.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "An error occurred",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
+	async function handleLogin(credential: UserCredential) {
+		try {
+			const result = await loginWithCredential(credential);
+			if (!result) {
+				throw new Error("Failed to log in");
+			}
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary">Create an account</h1>
-          <p className="text-muted-foreground">
-            Enter your information to create an account
-          </p>
-        </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Display Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create account"}
-            </Button>
-          </form>
-        </Form>
-      </div>
-    </div>
-  );
+			redirectAfterLogin();
+		} catch (error) {
+			toast.error("Failed to log in");
+			console.error("Error logging in:", error);
+		}
+	}
+
+	const registerForm = useForm<RegisterFormValues>({
+		resolver: zodResolver(registerFormSchema as any),
+		defaultValues: {
+			email: "",
+			passwordData: {
+				password: "",
+				confirmPassword: "",
+			},
+			displayName: "",
+		},
+	});
+	const onSubmit = async (data: RegisterFormValues) => {
+		await handleRegister(data);
+	};
+
+	return (
+		<AuthLayout
+			title="Create Account"
+			subtitle="Enter your information to create an account"
+		>
+			{/* <div className="flex items-center justify-center min-h-screen bg-background">
+				<Card className="w-full max-w-md">
+					<CardHeader className="space-y-1 text-center">
+						<CardTitle className="text-2xl font-bold">
+							Create an account
+						</CardTitle>
+						<CardDescription>
+							Enter your information to create an account
+						</CardDescription>
+					</CardHeader>
+
+					<CardContent> */}
+			<Form {...registerForm}>
+				<form
+					onSubmit={registerForm.handleSubmit(onSubmit)}
+					className="space-y-6"
+				>
+					<FormField
+						control={registerForm.control}
+						name="displayName"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Display Name</FormLabel>
+								<FormControl>
+									<Input placeholder="Your Name" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={registerForm.control}
+						name="email"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email</FormLabel>
+								<FormControl>
+									<Input
+										type="email"
+										placeholder="name@example.com"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={registerForm.control}
+						name="passwordData.password"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Password</FormLabel>
+								<FormControl>
+									<div className="relative">
+										<Input
+											type={showPassword ? "text" : "password"}
+											placeholder="******"
+											{...field}
+										/>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 text-muted-foreground"
+											onClick={() => setShowPassword(!showPassword)}
+											tabIndex={-1}
+										>
+											{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+										</Button>
+									</div>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={registerForm.control}
+						name="passwordData.confirmPassword"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Confirm Password</FormLabel>
+								<FormControl>
+									<div className="relative">
+										<Input
+											type={showPassword ? "text" : "password"}
+											placeholder="******"
+											{...field}
+										/>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 text-muted-foreground"
+											onClick={() => setShowPassword(!showPassword)}
+											tabIndex={-1}
+										>
+											{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+										</Button>
+									</div>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					{registerForm.formState.errors.passwordData?.root?.message && (
+						<div className="bg-red-500/10 border border-red-500/50 rounded-md p-3">
+							<FormMessage className="text-red-400 font-mono text-sm">
+								{registerForm.formState.errors.passwordData?.root?.message}
+							</FormMessage>
+						</div>
+					)}
+					{registerError && (
+						<div className="text-red-500 text-sm">{registerError}</div>
+					)}
+
+					<Button type="submit" disabled={isRegistering} className="w-full">
+						{isRegistering ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Creating account...
+							</>
+						) : (
+							"Create account"
+						)}
+					</Button>
+				</form>
+			</Form>
+			{/* </CardContent>
+				</Card>
+			</div> */}
+		</AuthLayout>
+	);
 }
