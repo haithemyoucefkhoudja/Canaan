@@ -1,7 +1,5 @@
-import { RelationshipsViewer } from "@/components/relationships-viewer"
+import { RelationshipsViewer } from "@/components/dashboard/relationships-viewer";
 
 export default function RelationshipsPage() {
-  return (
-      <RelationshipsViewer />
-  )
+	return <RelationshipsViewer />;
 }
