@@ -62,7 +62,7 @@ export default async function RootLayout({
 				<main data-vaul-drawer-wrapper="true">
 					<QueryProvider>
 						<AuthProvider user={user}>
-							<Header collections={collections} />
+							{/* <Header collections={collections} /> */}
 							{children}
 							<Toaster />
 						</AuthProvider>
