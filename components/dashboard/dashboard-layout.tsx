@@ -20,6 +20,7 @@ import {
 	Box,
 	StopCircleIcon,
 	Circle,
+	Database,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -35,11 +36,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 		{ name: "Historical Actors", icon: Users, href: "/dashboard/actors" },
 		{ name: "Locations", icon: MapPin, href: "/dashboard/locations" },
 		{ name: "Sources & Media", icon: FileText, href: "/dashboard/sources" }, // Combined sources and media
+
+		{ name: "Storage Management", icon: Database, href: "/dashboard/storage" }, // Combined sources and media
 		{
 			name: "Relationship Network",
 			icon: Network,
 			href: "/dashboard/relationships",
 		},
+
 		{ name: "Rewards", icon: Circle, href: "/dashboard/rewards" },
 
 		{ name: "Reward Boxes", icon: Box, href: "/dashboard/reward-boxes" },
@@ -87,7 +91,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 					{/* Navigation */}
 					<nav className="flex-1 p-4 space-y-2">
 						{navigationItems.map((item) => {
-							const isActive = pathname === item.href;
+							const isActive = pathname.startsWith(item.href);
 							return (
 								<Link key={item.name} href={item.href}>
 									<Button

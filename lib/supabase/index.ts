@@ -7,3 +7,4 @@ export * from "./media";
 export * from "./source";
 export * from "./stats";
 export * from "./user";
+export * from "./storage";
