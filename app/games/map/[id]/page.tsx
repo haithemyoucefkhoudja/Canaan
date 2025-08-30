@@ -1,4 +1,3 @@
-
 import { MultiplayerInteractiveHistoricalMap } from "@/components/map-game/multiplayer-interactive-historical-game";
 
 interface GamePageProps {
