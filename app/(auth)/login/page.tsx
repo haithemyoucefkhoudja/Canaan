@@ -37,11 +37,10 @@ import {
 import { toast } from "sonner";
 import { AuthLayout } from "@/components/auth/layout";
 import { Separator } from "@/components/ui/separator";
-import Link from "next/link";
-import { appendRedirectParam } from "@/shared/redirect";
+
 import { useRedirectParam } from "@/shared/useRedirectParam";
 import { GoogleLogoSvg } from "@/components/icons/google-icon";
-import { setCustomUserClaims } from "@/lib/server/auth";
+import { getOrCreateUserFromAuth } from "@/lib/supabase";
 
 export default function LoginPage() {
 	const redirect = useRedirectParam();
@@ -72,6 +71,13 @@ export default function LoginPage() {
 					auth,
 					getGoogleProvider(auth)
 				);
+				await getOrCreateUserFromAuth({
+					id: credential.user.uid,
+					email: credential.user.email as string,
+					display_name: credential.user.displayName as string,
+					photo_url: credential.user.photoURL,
+					email_verified: credential.user.emailVerified as boolean,
+				});
 
 				await handleLogin(credential);
 			} catch (error: any) {
