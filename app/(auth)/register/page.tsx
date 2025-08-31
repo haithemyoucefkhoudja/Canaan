@@ -32,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { AuthLayout } from "@/components/auth/layout";
 import { setCustomUserClaims } from "@/lib/server/auth";
+import { getOrCreateUserFromAuth } from "@/lib/supabase";
 
 export default function RegisterPage() {
 	const [showPassword, setShowPassword] = useState(false);
@@ -45,12 +46,13 @@ export default function RegisterPage() {
 					passwordData.password
 				);
 				await updateProfile(credential.user, { displayName });
-
-				// Set custom claims using the server action
-				const claimsResult = await setCustomUserClaims(credential.user.uid);
-				if (!claimsResult.success) {
-					throw new Error(claimsResult.error);
-				}
+				await getOrCreateUserFromAuth({
+					id: credential.user.uid,
+					email: credential.user.email as string,
+					display_name: credential.user.displayName as string,
+					photo_url: credential.user.photoURL,
+					email_verified: credential.user.emailVerified as boolean,
+				});
 				await handleLogin(credential);
 			} catch (error: any) {
 				toast.error(

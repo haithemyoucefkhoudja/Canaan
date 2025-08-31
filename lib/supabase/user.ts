@@ -9,7 +9,7 @@ import { User } from "@prisma/client";
  * @returns The full user profile from the database.
  */
 export async function getOrCreateUserFromAuth(
-	authIdentity: IAuthIdentity
+	authIdentity: Omit<IAuthIdentity, "id_token" | "custom_token" | "provider_id">
 ): Promise<User> {
 	const { id, email, display_name, photo_url } = authIdentity;
 
