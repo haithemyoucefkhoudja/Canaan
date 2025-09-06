@@ -3,7 +3,10 @@
 import { StoreMessageResponse } from "@/types/Message";
 import { supabase } from "./supabase";
 import { Message, Conversation } from "@prisma/client";
-
+export type InputUserMessage = Omit<
+	Message,
+	"id" | "created_at" | "updated_at"
+>;
 export async function createConversationDB(params: {
 	userId: string;
 	title: string;
@@ -49,6 +52,21 @@ export async function storeMessage(
 		throw new Error(`Could not save your message: ${messageError.message}`);
 	return { message_id: newMessage.id, conversation_id: conversationId };
 }
+async function checkWhoAmI() {
+	console.log("Asking the database for my user ID...");
+
+	// Call the RPC function by its name.
+	// The second argument is for parameters, but ours has none.
+	const { data, error } = await supabase.rpc("get_current_user_id");
+
+	if (error) {
+		console.error("Error calling RPC function:", error.message);
+		return;
+	}
+
+	// The 'data' variable holds the exact value returned by the function.
+	console.log("✅ SUCCESS! The database sees my ID as:", data);
+}
 
 /**
  * Fetches all conversations for a specific user, with pagination.
@@ -63,6 +81,7 @@ export async function getConversations(
 	page = 0,
 	pageSize = 15
 ): Promise<Conversation[]> {
+	// await checkWhoAmI();
 	const { data, error } = await supabase
 		.from("conversation")
 		.select("*") // Select all fields to match the Prisma 'Conversation' type
@@ -77,20 +96,11 @@ export async function getConversations(
 /**
  * Fetches all messages for a specific conversation belonging to a user.
  *
- * @param userId - The ID of the user requesting the messages.
  * @param conversationId - The ID of the conversation to fetch.
  * @returns A list of messages in the conversation.
  */
-export async function getMessages(
-	userId: string,
-	conversationId: string
-): Promise<Message[]> {
-	const { error: checkError } = await supabase
-		.from("conversation")
-		.select("id", { count: "exact" })
-		.eq("id", conversationId)
-		.eq("user_id", userId);
-	if (checkError) throw new Error("Conversation not found or access denied.");
+export async function getMessages(conversationId: string): Promise<Message[]> {
+	console.log("🚀 ~ getMessages ~ conversationId:", conversationId);
 
 	const { data, error } = await supabase
 		.from("message")
@@ -112,19 +122,36 @@ export async function getMessages(
 export async function editMessage(
 	userId: string,
 	messageId: string,
-	messageData: Omit<Message, "id" | "created_at" | "updated_at">
+	messageData: Omit<Message, "id" | "created_at" | "updated_at" | "index">
 ): Promise<Message> {
-	// 1. Verify the user owns the message via its conversation.
+	// 1. Fetch the message and its conversation's owner.
 	const { data: message, error: fetchError } = await supabase
 		.from("message")
 		.select("id, conversation:conversation_id(user_id)")
 		.eq("id", messageId)
 		.single();
-	if (
-		fetchError ||
-		!message ||
-		(message.conversation as any)?.user_id !== userId
-	) {
+
+	// Handle query errors first
+	if (fetchError) {
+		console.error("Error fetching message to edit:", fetchError);
+		throw new Error(`Database error: ${fetchError.message}`);
+	}
+
+	// Handle message not found
+	if (!message) {
+		console.warn(`Message with ID ${messageId} not found.`);
+		throw new Error("Message not found."); // A more accurate error
+	}
+
+	console.log("🚀 ~ editMessage ~ message found:", message);
+
+	// 2. Now, specifically check for permissions.
+	// The `(as any)` is okay here, but be aware of what it implies.
+	const ownerId = (message.conversation as any)?.user_id;
+	if (ownerId !== userId) {
+		console.warn(
+			`Permission denied. User ${userId} tried to edit message ${messageId} owned by ${ownerId}.`
+		);
 		throw new Error("You do not have permission to edit this message.");
 	}
 

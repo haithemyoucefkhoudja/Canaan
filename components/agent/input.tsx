@@ -15,15 +15,14 @@ import {
 import { cn } from "@/lib/utils";
 import {
 	useAttachments,
-	useChat,
 	useSearchMode,
-} from "@/providers/chat-provider";
+	useInput,
+} from "@/providers/input-provider";
 import { Square as StopIcon } from "lucide-react";
-import { useInput } from "@/providers/chat-provider";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { useAuth } from "../firebase-auth/AuthContext";
 
 import { useAsyncRoutePush } from "@/hooks/use-async-push";
+import { useChat } from "@/providers/chat-provider";
 
 const Attachements = memo(() => {
 	const { attachments, removeAttachment } = useAttachments();

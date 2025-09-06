@@ -5,25 +5,29 @@ import { MessageSquare } from "lucide-react";
 import { useChat } from "@/providers/chat-provider";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { useGetMessages } from "@/hooks/use-messages-query";
-import { ListScrollArea, ListScrollBar } from "../ui/list-scroll-area";
-import { useConversations } from "@/providers/chat-provider";
+import { ListScrollArea } from "../ui/list-scroll-area";
+import { useConversations } from "@/providers/conversation-provider";
 import { Conversation } from "@prisma/client";
 import { useAuth } from "../firebase-auth/AuthContext";
-import { useRouter } from "next/router";
-import { useAsyncRoutePush } from "@/hooks/use-async-push";
+import { v4 as uuid } from "uuid";
+import { useRouter } from "next/navigation";
 type ConversationElementType = {
 	conversationItem: Conversation;
-	conversationId: string;
 	onSelectConversation: (conversationItem: Conversation) => void;
 };
 export default function ConversationElement({
 	conversationItem,
-	conversationId,
 	onSelectConversation,
 }: ConversationElementType) {
-	const [conversationTitle, setConversationTitle] = useState(
-		conversationItem.title
-	);
+	const { conversation: activeConversation } = useChat();
+
+	const conversationId = activeConversation?.id || "";
+	const conversationTitle =
+		activeConversation?.id == conversationItem.id &&
+		activeConversation.title !== "notSet"
+			? activeConversation.title
+			: conversationItem.title;
+
 	return (
 		<Button
 			disabled={conversationId === conversationItem.id}
@@ -58,7 +62,7 @@ export default function ConversationElement({
 
 export function ConversationList() {
 	const { user } = useAuth();
-	const push = useAsyncRoutePush();
+	const router = useRouter();
 	const {
 		setConversation,
 		setError,
@@ -68,8 +72,8 @@ export function ConversationList() {
 		conversation,
 	} = useChat();
 
-	const onSelectConversation = async (conversation: Conversation) => {
-		await push(`${conversation.id}`);
+	const onSelectConversation = (conversation: Conversation) => {
+		router.push(`/agent/${conversation.id}`);
 		setConversation(conversation);
 	};
 
@@ -79,7 +83,7 @@ export function ConversationList() {
 		data: messagesdata,
 		isError: isErrorMessage,
 		error: errorMeessage,
-	} = useGetMessages(conversationId!, user?.id!);
+	} = useGetMessages(conversationId!);
 	const {
 		conversations,
 		fetchNextPage,
@@ -193,14 +197,13 @@ export function ConversationList() {
 									return null;
 
 								return (
-									<div key={groupName} className="mb-4">
+									<div key={uuid()} className="mb-4">
 										<h2 className="text-sm font-medium text-muted-foreground mb-2">
 											{groupName}
 										</h2>
 										{groupConversations.map((conversationItem) => (
 											<ConversationElement
 												onSelectConversation={onSelectConversation}
-												conversationId={conversation?.id || ""}
 												conversationItem={conversationItem}
 											/>
 										))}

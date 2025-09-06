@@ -4,18 +4,16 @@ import { memo, useEffect } from "react";
 import { ListScrollArea } from "../ui/list-scroll-area";
 import { useChat } from "@/providers/chat-provider";
 import { ChatInput } from "./input";
-import { useQuery } from "@tanstack/react-query";
-import { getMessages } from "@/lib/supabase";
 import { useAuth } from "../firebase-auth/AuthContext";
 import { Error, NotFound } from "../error-handlers";
 import { MessageExtra } from "@/types/Message";
-import { useRouter } from "next/navigation";
-import Loading from "@/app/dashboard/actors/loading";
 import { Loader } from "../ui/loader";
 import { useGetMessages } from "@/hooks/use-messages-query";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 type MessageListWrapperProps = {
 	conversationId: string;
+	newChatParam: boolean;
 };
 type MessageListProps = {
 	queryMessages: MessageExtra[];
@@ -53,31 +51,48 @@ const MessageList = memo(function MessageList({
 });
 const MessageListWrapper = memo(function MessageListWrapper({
 	conversationId,
+	newChatParam,
 }: MessageListWrapperProps) {
 	const { user } = useAuth();
-	const { messages: messagesList, setConversation } = useChat();
-
+	const { messages, setConversation, isNewChat, setIsNewChat } = useChat();
+	const router = useRouter();
 	// 2. Use the 'enabled' option to conditionally fire the query.
 	//    The query will not run until 'user' exists.
 	const {
-		data: messages = [], // Use a better name and provide a default
+		data: fetchedMessages = [], // Use a better name and provide a default
 		isLoading,
 		isError,
 		error,
 		isSuccess,
-	} = useGetMessages(conversationId, user?.id || null);
-	const router = useRouter();
+	} = useGetMessages(conversationId);
 	useEffect(() => {
+		if (!isSuccess) return;
+
+		const title = fetchedMessages.length > 0 ? "notSet" : "New Conversation";
 		setConversation((prev) =>
-			!prev ? { id: conversationId } : { ...prev, id: conversationId }
+			!prev
+				? { id: conversationId, title }
+				: { ...prev, id: conversationId, title }
 		);
-	}, [isSuccess]);
+
+		// Set new chat state based on parameter and message count
+		setIsNewChat(newChatParam && fetchedMessages.length === 0);
+	}, [
+		isSuccess,
+		fetchedMessages.length,
+		conversationId,
+		newChatParam,
+		setConversation,
+		setIsNewChat,
+	]);
+
 	useEffect(() => {
-		if (isSuccess && messagesList.length == 0 && messages.length == 0) {
-			toast.error(`There's no Conversation with ID:${conversationId}`);
+		if (isSuccess && fetchedMessages.length === 0 && !newChatParam) {
+			toast.error(`There's no Conversation with ID: ${conversationId}`);
 			router.push("/agent");
 		}
-	}, [isSuccess, messagesList, messages]);
+	}, [isSuccess, fetchedMessages.length, newChatParam, conversationId]);
+
 	if (isLoading) {
 		return <Loader size="lg" />;
 	}
@@ -85,14 +100,17 @@ const MessageListWrapper = memo(function MessageListWrapper({
 	if (isError) {
 		return <Error message={error.message} />;
 	}
-	// 5. If we reach this point, the query was successful and messages are available.
+	// 5. If we reach this point, the query was successful and fetchedMessages are available.
 	// However, the component might still render for a frame before the redirect happens.
 	// To prevent a flicker, we can add a final check.
-	if ((!messages || messages.length === 0) && messagesList.length == 0) {
+	if (
+		(!fetchedMessages || fetchedMessages.length === 0) &&
+		messages.length == 0
+	) {
 		// Render a loader or null while the redirect is happening.
 		return <Loader size="lg" />;
 	}
-	return <MessageList queryMessages={messages} />;
+	return <MessageList queryMessages={fetchedMessages} />;
 });
 
 export default MessageListWrapper;

@@ -1,25 +1,20 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-
-import {
-	getAvailableEmbeddingModelProviders,
-	getChatModel,
-} from "../providers";
-import { searchHandlers } from "../messageHandler";
+import { Handlers, THandlersKeys } from "../messageHandler";
 import {
 	AIMessage,
 	BaseMessage,
 	HumanMessage,
 	MessageContentText,
 } from "@langchain/core/messages";
-import { MetaSearchAgentType } from "../search/metaSearchAgent";
+import { MetaAgentType } from "../search/metaAgent";
 import { Embeddings } from "@langchain/core/embeddings";
 import EventEmitter from "eventemitter3";
 import { Document } from "langchain/document";
-import { DeepChatOpenAI } from "../providers/openai";
 import { RemoteFileAttachment } from "@/types/attachment";
 import { JinaAIEmbeddings } from "@/lib/tools/jina-embedding";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
-// Add this utility function to convert EventEmitter to AsyncIterator
+// this utility function to convert EventEmitter to AsyncIterator
 export function on(emitter: EventEmitter, event: string) {
 	const queue: any[] = [];
 	const resolvers: ((value: IteratorResult<any>) => void)[] = [];
@@ -66,20 +61,13 @@ export function on(emitter: EventEmitter, event: string) {
 		},
 	};
 }
-export interface chatModel {
-	provider: string;
-	model: string;
-	apiKey: string;
-	customOpenAIBaseURL?: string;
-	customOpenAIKey?: string;
-}
 
 async function* streamSearchResponse(
 	query: MessageContentText[],
 	history: BaseMessage[],
 	llm: BaseChatModel,
 	embeddings: Embeddings | undefined,
-	searchHandler: MetaSearchAgentType,
+	searchHandler: MetaAgentType,
 	attachments: RemoteFileAttachment[] = []
 ) {
 	const emitter = await searchHandler.searchAndAnswer(
@@ -129,6 +117,7 @@ async function* streamSearchResponse(
 	}
 }
 export interface ChatRequestBody {
+	task: THandlersKeys;
 	query: MessageContentText[];
 	history: Array<[string, any]>;
 	attachments?: RemoteFileAttachment[];
@@ -140,20 +129,23 @@ export interface UserChatRequestBody {
 	attachments?: RemoteFileAttachment[];
 }
 async function initializeModels() {
-	const llm = (await getChatModel(
-		"gemini",
-		"AIzaSyBYxVUmc2y3lpA97ITqk4ZXY4mOSsOHZ6g",
-		"gemini-2.5-flash"
-	)) as BaseChatModel;
-	const additional = {
-		model: "jina-embeddings-v3",
-		task: "retrieval.query" as const,
-		late_chunking: true,
-		dimensions: 768,
-	};
+	const llm = new ChatGoogleGenerativeAI({
+		model: "gemini-2.5-flash",
+		temperature: 0,
+		apiKey: "AIzaSyBYxVUmc2y3lpA97ITqk4ZXY4mOSsOHZ6g",
+		metadata: {
+			isMultimodal: true,
+		},
+	});
+
 	const embeddings = new JinaAIEmbeddings({
 		apiKey: "jina_ff70fcb79ac341dcafad18970b711b67bjuoz_pC_DiS1dAFESA_AX25g7uP",
-		...additional,
+		...{
+			model: "jina-embeddings-v3",
+			task: "retrieval.query" as const,
+			late_chunking: true,
+			dimensions: 768,
+		},
 	});
 	return { llm, embeddings };
 }
@@ -161,7 +153,7 @@ async function initializeModels() {
 export async function* handleChatRequest(body: ChatRequestBody) {
 	try {
 		const { llm, embeddings } = await initializeModels();
-		const searchHandler = (searchHandlers as any)["academicSearch"];
+		const searchHandler = Handlers[body.task];
 		if (!searchHandler) {
 			throw new Error("Invalid focus mode");
 		}

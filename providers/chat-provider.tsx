@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { v4 as uuid } from "uuid";
-import { handleChatRequest, type UserChatRequestBody } from "@/ai";
+import { handleChatRequest, type ChatRequestBody } from "@/ai";
 import type { StoreMessageResponse } from "@/types/Message";
 import { RemoteFileAttachment, ClientAttachment } from "@/types/attachment";
 import {
@@ -18,11 +18,11 @@ import {
 import {
 	createConversationDB,
 	editMessage,
+	InputUserMessage,
 	storeMessage,
 } from "@/lib/supabase";
 import { callWithRetry } from "@/lib";
 import { MessageExtra } from "@/types/Message";
-import { useInfiniteConversations } from "@/hooks/use-infinite-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { Conversation } from "@prisma/client";
 import { useAuth } from "@/components/firebase-auth/AuthContext";
@@ -31,9 +31,11 @@ import { supabase } from "@/lib/supabase/supabase";
 import { MessageContentText } from "@langchain/core/messages";
 import { generateMessages } from "@/test-messages";
 import { toast } from "sonner";
-import { voiceOptions } from "@/voice-options";
 import { useAsyncRoutePush } from "@/hooks/use-async-push";
 import { ConversationType } from "@/types/Conversation";
+import { usePathname } from "next/navigation";
+import { InputProvider } from "./input-provider";
+import { ConversationsProvider } from "./conversation-provider";
 async function handleNewChat(id: string): Promise<Conversation> {
 	const newConversation = await createConversationDB({
 		title: "New Conversation",
@@ -51,12 +53,14 @@ interface ChatContextValue {
 	conversation: ConversationType | null;
 	stopRef: React.MutableRefObject<boolean>;
 	stop: boolean;
+	isNewChat: boolean;
 	setStop: React.Dispatch<React.SetStateAction<boolean>>;
 	setMessages: React.Dispatch<React.SetStateAction<MessageExtra[]>>;
 	setConversation: React.Dispatch<
 		React.SetStateAction<ConversationType | null>
 	>;
 	setError: React.Dispatch<React.SetStateAction<string | null>>;
+	setIsNewChat: React.Dispatch<React.SetStateAction<boolean>>;
 	rewrite: (
 		messageId: string,
 		searchMode: string,
@@ -70,255 +74,24 @@ interface ChatContextValue {
 		emptyInput: () => void
 	) => void;
 }
-interface ConversationsContextValue {
-	conversations: Conversation[];
-	fetchNextPage: () => void;
-	hasNextPage: boolean;
-	isLoading: boolean;
-	isError: boolean;
-	error: any;
-}
-interface AttachmentsContextValue {
-	attachments: ClientAttachment[];
-	handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-	addAttachment: (attachment: ClientAttachment) => void;
-	removeAttachment: (attachmentId: string) => void;
-	clearAttachments: () => void;
-	fileInputRef: React.RefObject<HTMLInputElement>;
-}
-interface InputContextValue {
-	input: string;
-	setInput: React.Dispatch<React.SetStateAction<string>>;
-	emptyInput: () => void;
-}
-interface VoiceContextValue {
-	speechRate: number;
-	setSpeechRate: React.Dispatch<React.SetStateAction<number>>;
-	voiceId: string;
-	setVoiceId: React.Dispatch<React.SetStateAction<string>>;
-}
-interface SearchModeContextValue {
-	searchMode: string;
-	setSearchMode: React.Dispatch<React.SetStateAction<string>>;
-}
 
 const MAX_RETRIES = 3;
-const ConversationsContext = createContext<ConversationsContextValue>({
-	conversations: [],
-	fetchNextPage: () => {},
-	hasNextPage: false,
-	isLoading: false,
-	isError: false,
-	error: null,
-});
-const ConversationsProvider: FC<{ children: ReactNode }> = ({ children }) => {
-	const { user } = useAuth();
-	const {
-		data,
-		fetchNextPage,
-		hasNextPage,
-		isLoading,
-		isError,
-		error: ErrorConversation,
-	} = useInfiniteConversations(user!.id, 10);
-	const conversations = data?.pages.flat() || [];
-
-	const conversationsContextValue = useMemo<ConversationsContextValue>(() => {
-		return {
-			conversations,
-			fetchNextPage,
-			hasNextPage,
-			isLoading,
-			isError,
-			error: ErrorConversation,
-		};
-	}, [
-		conversations,
-		fetchNextPage,
-		hasNextPage,
-		isLoading,
-		isError,
-		ErrorConversation,
-	]);
-	return (
-		<ConversationsContext.Provider value={conversationsContextValue}>
-			{children}
-		</ConversationsContext.Provider>
-	);
-};
-
-const InputProvider: FC<{ children: ReactNode }> = ({ children }) => {
-	const [input, setInput] = useState("");
-	const [searchMode, setSearchMode] = useState("webSearch");
-	const [attachments, setAttachments] = useState<ClientAttachment[]>([]);
-	const [speechRate, setSpeechRate] = useState(1.0);
-
-	const fileInputRef = useRef<HTMLInputElement>(null);
-
-	const [voiceId, setVoiceId] = useState(voiceOptions.en[0].id);
-	const emptyInput = useMemo(() => {
-		return () => {
-			setInput("");
-			setAttachments([]);
-			setSearchMode("webSearch");
-		};
-	}, []);
-	const handlePlayMessage = (content: string) => {
-		// ... (This section is unchanged) ...
-		if ("speechSynthesis" in window) {
-			speechSynthesis.cancel();
-
-			const utterance = new SpeechSynthesisUtterance(content);
-			utterance.lang = "en-US";
-			utterance.rate = speechRate;
-
-			const voices = speechSynthesis.getVoices();
-			const selectedVoiceOption = voiceOptions["en"].find(
-				(v) => v.id === voiceId
-			);
-
-			if (selectedVoiceOption) {
-				const matchingVoice = voices.find(
-					(voice) =>
-						voice.name.includes(
-							selectedVoiceOption.voice
-								.split(" - ")[0]
-								.replace("Microsoft ", "")
-						) || voice.lang.startsWith("en")
-				);
-
-				if (matchingVoice) {
-					utterance.voice = matchingVoice;
-				}
-			}
-
-			speechSynthesis.speak(utterance);
-		}
-	};
-
-	const addAttachment = useCallback(
-		(attachment: ClientAttachment) => {
-			if (!attachment) return;
-
-			setAttachments((prev) => {
-				const newItem: ClientAttachment = attachment;
-
-				let newItems = [];
-				console.log("prev:", prev);
-				if (prev)
-					newItems = [
-						newItem,
-						...prev.filter((item) => item.id !== attachment.id),
-					];
-				else {
-					newItems = [newItem];
-				}
-				return newItems;
-			});
-		},
-		[attachments]
-	);
-	const removeAttachment = useCallback((attachmentId: string) => {
-		setAttachments((prev) => {
-			const newItems = [...prev];
-			newItems.splice(
-				newItems.findIndex((item) => item.id === attachmentId),
-				1
-			);
-			return newItems;
-		});
-	}, []);
-	const clearAttachments = useCallback(() => {
-		setAttachments([]);
-	}, []);
-	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		if (event.target.files) {
-			const newFiles = Array.from(event.target.files);
-			newFiles.map((file) => {
-				if (file.type.startsWith("image/")) {
-					const item: ClientAttachment = {
-						id: uuid(),
-						file: file,
-						previewUrl: URL.createObjectURL(file),
-					};
-					addAttachment(item);
-				}
-			});
-			event.target.value = "";
-		}
-	};
-
-	const attachmentsContextValue = useMemo<AttachmentsContextValue>(() => {
-		return {
-			attachments,
-			fileInputRef,
-			addAttachment,
-			removeAttachment,
-			clearAttachments,
-			handleFileChange,
-		};
-	}, [
-		attachments,
-		addAttachment,
-		removeAttachment,
-		clearAttachments,
-		handleFileChange,
-	]);
-	const inputContextValue = useMemo<InputContextValue>(() => {
-		return {
-			input,
-			setInput,
-			emptyInput,
-		};
-	}, [input, setInput, emptyInput]);
-	const searchModeContextValue = useMemo<SearchModeContextValue>(() => {
-		return {
-			searchMode,
-			setSearchMode,
-		};
-	}, [searchMode, setSearchMode]);
-	const voiceContextValue = useMemo<VoiceContextValue>(() => {
-		return {
-			voiceId,
-			setVoiceId,
-			speechRate,
-			setSpeechRate,
-		};
-	}, [voiceId, speechRate, setSpeechRate, setVoiceId]);
-	return (
-		<InputContext.Provider value={inputContextValue}>
-			<AttachmentsContext.Provider value={attachmentsContextValue}>
-				<SearchModeContext.Provider value={searchModeContextValue}>
-					<VoiceContext.Provider value={voiceContextValue}>
-						{children}
-					</VoiceContext.Provider>
-				</SearchModeContext.Provider>
-			</AttachmentsContext.Provider>
-		</InputContext.Provider>
-	);
-};
 
 // Helper functions moved outside component to avoid recreation on each render
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
-const InputContext = createContext<InputContextValue | undefined>(undefined);
 
-const AttachmentsContext = createContext<AttachmentsContextValue | undefined>(
-	undefined
-);
-
-const VoiceContext = createContext<VoiceContextValue | undefined>(undefined);
-const SearchModeContext = createContext<SearchModeContextValue | undefined>(
-	undefined
-);
 export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	// State management
 	const messageTemplates = generateMessages(20);
-
+	const [isNewChat, setIsNewChat] = useState(false);
 	const { user } = useAuth();
 	if (!user) throw new Error("User not authenticated");
 	const [messages, setMessages] = useState<MessageExtra[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [stop, setStop] = useState(true);
+	const [remoteFilesAttachments, setRemoteFilesAttachements] = useState<
+		RemoteFileAttachment[]
+	>([]);
 	const push = useAsyncRoutePush();
 
 	const [conversation, setConversation] = useState<ConversationType | null>(
@@ -351,23 +124,13 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
 	const saveUserMessage = useCallback(
 		async (
-			input: string,
-			attachments: RemoteFileAttachment[],
-			conversationId: string
+			userMessage: InputUserMessage
 		): Promise<{
 			res: StoreMessageResponse;
 		}> => {
 			try {
 				// Store the MessageExtra
-				const res = await storeMessage(user.id, {
-					content: input,
-					role: "USER",
-					attachments,
-					reasoning: null,
-					sources: null,
-					suggestions: null,
-					conversation_id: conversationId,
-				});
+				const res = await storeMessage(user.id, userMessage);
 
 				return {
 					res,
@@ -420,6 +183,79 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			queryKey: ["conversations"],
 		});
 	};
+	const updateConversation = useCallback(async () => {
+		const conversationId = conversation!.id;
+		const trimmedHistory = messages.map((msg) => ({
+			role: msg.role.toLowerCase() as "user" | "assistant",
+			content: [
+				...(msg.content as MessageContentText[]),
+				...(remoteFilesAttachments.map((item) => {
+					return {
+						type: "image_url",
+						image_url: { url: item.url },
+					};
+				}) || []),
+			],
+		}));
+		const requestBody: ChatRequestBody = {
+			query: [
+				{
+					text: "Based on The conversation create a title for it",
+					type: "text",
+				},
+			],
+			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
+			attachments: remoteFilesAttachments,
+			task: "titleGenerator", // Using an existing task
+		};
+
+		const chatGenerator = handleChatRequest(requestBody);
+
+		let accumulatedTitle = "";
+		try {
+			for await (const event of chatGenerator) {
+				if (event.type === "message") {
+					accumulatedTitle += event.data;
+					setConversation((prev) =>
+						prev ? { ...prev, title: accumulatedTitle } : null
+					);
+				} else if (event.type === "end") {
+					break;
+				} else if (event.type === "error") {
+					console.error("Failed to generate title:", event.data);
+					return;
+				}
+			}
+		} catch (e) {
+			console.error("Error while generating title:", e);
+			return;
+		}
+
+		const newTitle = accumulatedTitle.replace(/"/g, "").trim();
+
+		if (newTitle) {
+			try {
+				const { error } = await supabase
+					.from("conversation")
+					.update({ title: newTitle })
+					.eq("id", conversationId);
+
+				if (error) throw error;
+
+				invalidateConversations();
+			} catch (error) {
+				console.error("Failed to update conversation title:", error);
+			}
+		}
+	}, [invalidateConversations, setConversation]);
+
+	useEffect(() => {
+		if (isNewChat && conversation && messages.length >= 2) {
+			console.log("🚀 ~ ChatProvider ~ updating conversation title");
+			updateConversation();
+			setIsNewChat(false); // Reset after updating
+		}
+	}, [isNewChat, conversation, messages.length, updateConversation]);
 	useEffect(() => {
 		if (error) toast.error(error);
 	}, [error]);
@@ -433,7 +269,6 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		existingMessageId?: string
 	) => {
 		("sendLLMMessage");
-
 		const mode = existingMessageId ? "edit" : "new";
 		const optimisticAssistantId = existingMessageId || uuid(); // Use existing or new optimistic ID
 		// 1. Prepare User Content (including clipboard)
@@ -451,6 +286,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 				})
 			);
 		}
+		setRemoteFilesAttachements(messageAttachments);
 		// 2. Handle User MessageExtra (if "new" mode)
 		const optimisticUserMessageId = uuid();
 		const userMessage: MessageExtra = {
@@ -464,6 +300,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			sources: null,
 			reasoning: null,
 			suggestions: null,
+			index: messages.length + 1,
 		};
 		if (mode === "new") {
 			setMessages((prev) => [...prev, userMessage]);
@@ -472,9 +309,8 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		// 3. Prepare History for LLM
 		// History should be based on the state *before* adding the new optimistic user MessageExtra if applicable,
 		// or up to the point of rewrite.
-		const historyForLLM = currentHistory;
 
-		const trimmedHistory = historyForLLM.map((msg) => ({
+		const trimmedHistory = currentHistory.map((msg) => ({
 			role: msg.role.toLowerCase() as "user" | "assistant",
 			content: [
 				...(msg.content as MessageContentText[]),
@@ -490,7 +326,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		let assistantMessage: MessageExtra = {
 			content: [{ text: "", type: "text" }],
 			role: "ASSISTANT",
-			conversation_id: conversationId as string,
+			conversation_id: conversationId,
 			sources: [],
 			isLoading: true,
 			id: optimisticAssistantId,
@@ -499,6 +335,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			suggestions: null,
 			created_at: new Date(),
 			updated_at: new Date(),
+			index: messages.length + 2,
 		};
 
 		if (mode === "new") {
@@ -535,11 +372,11 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		}
 
 		// 5. Make API Call and Stream Response
-		const requestBody: UserChatRequestBody = {
+		const requestBody: ChatRequestBody = {
 			query: userMessageContent,
 			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
-			optimizationMode: "balanced",
 			attachments: messageAttachments,
+			task: "academicSearch",
 		};
 
 		const chatGenerator = handleChatRequest(requestBody);
@@ -590,81 +427,6 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 							: m
 					)
 				);
-				// switch (updateType) {
-				// 	case "content":
-				// 		for (let i = 0; i < newContent.length; i++) {
-				// 			await delay(OUTPUT_DELAY);
-				// 			accumulatedContent[0].text += newContent[i];
-
-				// 			setMessages((prevMsgs) =>
-				// 				prevMsgs.map((m) =>
-				// 					m.id === optimisticAssistantId
-				// 						? {
-				// 								...m,
-				// 								content: accumulatedContent,
-				// 								sources: accumulatedSources,
-				// 								reasoning: accumulatedReasoning || null, // Keep null if empty
-				// 								isLoading: true,
-				// 								action: newAction,
-				// 						  }
-				// 						: m
-				// 				)
-				// 			);
-				// 		}
-				// 		break;
-				// 	case "reasoning":
-				// 		for (let i = 0; i < newReasoning.length; i++) {
-				// 			await delay(OUTPUT_DELAY);
-				// 			accumulatedReasoning += newReasoning[i];
-				// 			setMessages((prevMsgs) =>
-				// 				prevMsgs.map((m) =>
-				// 					m.id === optimisticAssistantId
-				// 						? {
-				// 								...m,
-				// 								content: accumulatedContent,
-				// 								sources: accumulatedSources,
-				// 								reasoning: accumulatedReasoning || null, // Keep null if empty
-				// 								isLoading: true,
-				// 								action: newAction,
-				// 						  }
-				// 						: m
-				// 				)
-				// 			);
-				// 		}
-				// 		break;
-				// 	case "sources":
-				// 		setMessages((prevMsgs) =>
-				// 			prevMsgs.map((m) =>
-				// 				m.id === optimisticAssistantId
-				// 					? {
-				// 							...m,
-				// 							content: accumulatedContent,
-				// 							sources: accumulatedSources,
-				// 							reasoning: accumulatedReasoning || null, // Keep null if empty
-				// 							isLoading: true,
-				// 							action: newAction,
-				// 					  }
-				// 					: m
-				// 			)
-				// 		);
-				// 		break;
-				// 	case "action":
-				// 		setMessages((prevMsgs) =>
-				// 			prevMsgs.map((m) =>
-				// 				m.id === optimisticAssistantId
-				// 					? {
-				// 							...m,
-				// 							content: accumulatedContent,
-				// 							sources: accumulatedSources,
-				// 							reasoning: accumulatedReasoning || null, // Keep null if empty
-				// 							isLoading: true,
-				// 							action: newAction,
-				// 					  }
-				// 					: m
-				// 			)
-				// 		);
-				// 		break;
-				// }
 			}
 
 			if (stopRef.current && !accumulatedContent) {
@@ -693,19 +455,13 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 				reasoning: accumulatedReasoning || null,
 				attachments: null,
 				isLoading: false,
+				index: messages.length + 2,
 			};
-
-			let finalAssistantDbId: string = optimisticAssistantId;
 
 			if (mode === "new") {
 				try {
 					const userSaveResult = await callWithRetry(
-						() =>
-							saveUserMessage(
-								userMessage.content as any, //////
-								messageAttachments,
-								conversationId
-							),
+						() => saveUserMessage(userMessage),
 						MAX_RETRIES
 					);
 					invalidateConversations();
@@ -729,7 +485,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 					);
 					return;
 				}
-				const storeRes = await callWithRetry(
+				callWithRetry(
 					() =>
 						storeMessage(
 							user.id, // User ID
@@ -741,14 +497,13 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 								reasoning: finalAssistantMessageData.reasoning || null,
 								sources: finalAssistantMessageData.sources || null,
 								suggestions: finalAssistantMessageData.suggestions || null,
+								index: finalAssistantMessageData.index + 2,
 							}
 						),
 					MAX_RETRIES
 				);
-				if (typeof storeRes === "string") throw new Error(storeRes);
-				finalAssistantDbId = String((storeRes as any).message_id);
 			} else {
-				await callWithRetry(
+				callWithRetry(
 					() =>
 						editMessage(user.id, optimisticAssistantId, {
 							content: finalAssistantMessageData.content,
@@ -770,7 +525,6 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 					msg.id === optimisticAssistantId
 						? {
 								...msg, // Spread existing fields first
-								id: finalAssistantDbId, // Update ID if it changed
 								content: accumulatedContent,
 								isLoading: false,
 								sources: accumulatedSources,
@@ -877,11 +631,13 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		emptyInput: () => void
 	) => {
 		if (!query.trim()) return;
+
 		let activeConversation = conversation || null;
 		if (messages.length === 0) {
 			activeConversation = await handleNewChat(user!.id);
 			setConversation(activeConversation);
-			await push(`/agent/${activeConversation.id}`);
+			setIsNewChat(true); // Mark as new chat for title generation
+			await push(`/agent/${activeConversation.id}?newChat=true`);
 		}
 		if (!activeConversation) {
 			return;
@@ -926,6 +682,8 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	};
 	const contextValue = useMemo<ChatContextValue>(() => {
 		return {
+			isNewChat,
+			setIsNewChat,
 			stop,
 			setStop,
 			stopRef,
@@ -971,39 +729,5 @@ export const useChat = (): ChatContextValue => {
 	}
 	return context;
 };
-export const useInput = (): InputContextValue => {
-	const context = useContext(InputContext);
-	if (context === undefined) {
-		throw new Error("useInput must be used within a ChatProvider");
-	}
-	return context;
-};
-export const useAttachments = (): AttachmentsContextValue => {
-	const context = useContext(AttachmentsContext);
-	if (context === undefined) {
-		throw new Error("useAttachments must be used within a ChatProvider");
-	}
-	return context;
-};
-export const useSearchMode = (): SearchModeContextValue => {
-	const context = useContext(SearchModeContext);
-	if (context === undefined) {
-		throw new Error("useSearchMode must be used within a ChatProvider");
-	}
-	return context;
-};
-export const useConversations = (): ConversationsContextValue => {
-	const context = useContext(ConversationsContext);
-	if (context === undefined) {
-		throw new Error("useConversations must be used within a ChatProvider");
-	}
-	return context;
-};
-export const useVoice = (): VoiceContextValue => {
-	const context = useContext(VoiceContext);
-	if (context === undefined) {
-		throw new Error("useVoice must be used within a ChatProvider");
-	}
-	return context;
-};
+
 export default ChatProvider;

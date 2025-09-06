@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cn } from "@/lib/utils";
+import JSXStyle from "styled-jsx/style";
 
 function useMergeRefs<T>(
 	...refs: Array<React.Ref<T> | undefined>
@@ -32,13 +33,13 @@ const ListScrollArea = React.forwardRef<
 			className={cn("relative overflow-hidden", className)}
 			{...props}
 		>
-			<style>
+			<JSXStyle>
 				{`
-        [data-radix-scroll-area-viewport] > div {
+        [data-radix-scroll-area-viewport]  > div {
             display:block !important;
         }
         `}
-			</style>
+			</JSXStyle>
 			<ScrollAreaPrimitive.Viewport
 				ref={mergedViewportRef}
 				className="h-full w-full rounded-[inherit] overflow-x-hidden"
