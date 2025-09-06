@@ -12,17 +12,10 @@ import { Progress } from "@/components/ui/progress";
 import { Star } from "lucide-react";
 import { motion } from "motion/react";
 
-interface LevelDropProps {
-	level: number;
-	xp: number;
-	xpToNextLevel: number;
-}
-
-export default function LevelDrop({
-	level = 30,
-	xp = 750,
-	xpToNextLevel = 1000,
-}: LevelDropProps) {
+export default function LevelDrop() {
+	const level = 30;
+	const xp = 750;
+	const xpToNextLevel = 1000;
 	const progressPercentage = (xp / xpToNextLevel) * 100;
 
 	return (

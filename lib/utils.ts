@@ -74,3 +74,6 @@ export const formatSize = (size: number) => {
 export function formatId(id: string) {
 	return `..${id.substring(id.length - 6)}`;
 }
+export function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}

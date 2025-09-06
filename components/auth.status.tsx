@@ -34,7 +34,6 @@ export const navItems = [
 export function AuthStatus() {
 	const router = useRouter();
 	const { user } = useAuth();
-	console.log("🚀 ~ AuthStatus ~ user:", user);
 	const pathname = usePathname();
 
 	const [handleLogout, isLogoutLoading] = useLoadingCallback(async () => {
@@ -72,7 +71,7 @@ export function AuthStatus() {
 						{user?.photo_url ? (
 							<AvatarImage
 								className="object-cover"
-								src={user.photo_url || "/placeholder.svg"}
+								src={user.photo_url}
 								alt={user.display_name || "User"}
 							/>
 						) : null}
