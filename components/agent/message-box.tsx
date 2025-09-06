@@ -18,8 +18,7 @@ import { Copy } from "@/components/button-tools/copy";
 import Rewrite from "@/components/button-tools/rewrite";
 import MessageSources from "./message-sources";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { useInput } from "@/providers/chat-provider";
-import { useSearchMode } from "@/providers/chat-provider";
+import { useInput, useSearchMode } from "@/providers/input-provider";
 import { RemoteFileAttachment } from "@/types/attachment";
 import { Document } from "langchain/document";
 import { MessageContentText } from "@langchain/core/messages";
@@ -101,7 +100,7 @@ const MessageBox = memo(function MessageBox({
 							You:
 						</h3>
 						<span className="text-black/60 dark:text-white/60 text-[10px] mt-0.5">
-							{message.id}
+							{message.index}
 						</span>
 					</div>
 					<div className=" flex ">
@@ -209,7 +208,7 @@ const MessageBox = memo(function MessageBox({
 									Answer:
 								</h3>
 								<span className="text-black/60 dark:text-white/60 text-[10px] mt-0.5">
-									{message.id}
+									{message.index}
 								</span>
 							</div>
 							{!isLoading ? (

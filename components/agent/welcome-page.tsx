@@ -2,7 +2,8 @@
 import { BookOpen, Sparkles } from "lucide-react";
 import React, { useEffect } from "react";
 import { ChatInput } from "./input";
-import { useChat, useInput } from "@/providers/chat-provider";
+import { useChat } from "@/providers/chat-provider";
+import { useInput } from "@/providers/input-provider";
 
 function WelcomePage() {
 	const { setMessages, setConversation, newChatStarter } = useChat();

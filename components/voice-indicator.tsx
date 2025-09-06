@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Check, Gauge, Volume2 } from "lucide-react";
 import { voiceOptions } from "@/voice-options";
-import { useVoice } from "@/providers/chat-provider";
+import { useVoice } from "@/providers/input-provider";
 function VoiceIndicator() {
 	const { voiceId, setVoiceId, speechRate, setSpeechRate } = useVoice();
 

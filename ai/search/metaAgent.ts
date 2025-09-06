@@ -20,12 +20,12 @@ import LineListOutputParser from "@/ai/outputParsers/listLineOutputParser";
 import LineOutputParser from "@/ai/outputParsers/lineOutputParser";
 import { getDocumentsFromLinks } from "@/ai/utils/documents";
 import { Document } from "langchain/document";
-import { searchSearxng } from "@/ai/searxng";
+// import { searchSearxng } from "@/ai/searxng";
 import { EventEmitter } from "eventemitter3";
 import { StreamEvent } from "@langchain/core/tracers/log_stream";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import { RemoteFileAttachment } from "@/types/attachment";
-export interface MetaSearchAgentType {
+export interface MetaAgentType {
 	searchAndAnswer: (
 		message: MessageContentText[],
 		history: BaseMessage[],
@@ -44,7 +44,7 @@ interface Config {
 	activeEngines: string[];
 }
 type BasicChainInput = { chat_history: BaseMessage[]; query: HumanMessage };
-class MetaSearchAgent implements MetaSearchAgentType {
+class MetaAgent implements MetaAgentType {
 	private config: Config;
 	private strParser = new StringOutputParser();
 	private emitter = new EventEmitter();
@@ -173,6 +173,7 @@ class MetaSearchAgent implements MetaSearchAgentType {
 											doc.metadata.url
 										);
 								} catch (error: any) {
+									console.trace();
 									console.error(
 										"Something Wrong Happened during summarization:",
 										error.message
@@ -222,6 +223,7 @@ class MetaSearchAgent implements MetaSearchAgentType {
 						return { query: question, docs: documents };
 					}
 				} catch (error: any) {
+					console.trace();
 					console.error(
 						"Something Wrong Happened in search retriever chain:",
 						error.message
@@ -290,6 +292,28 @@ class MetaSearchAgent implements MetaSearchAgentType {
 			]),
 			llm,
 			this.strParser,
+			RunnableLambda.from(async (input: string) => {
+				if (this.config.activeEngines.includes("title")) {
+					const titleParser = new LineOutputParser({
+						key: "title",
+					});
+					const title = await titleParser.parse(input);
+					if (title === "not_needed") {
+						process.env.NODE_ENV == "development" &&
+							console.log("Title not needed, returning empty result.");
+						return "not_needed";
+					}
+
+					process.env.NODE_ENV == "development" &&
+						console.log(
+							"🚀 ~ MetaAgent ~ createAnsweringChain ~ title:",
+							title
+						);
+					return title;
+				}
+
+				return input;
+			}),
 		]).withConfig({ runName: "FinalResponseGenerator" });
 	}
 	private processDocs(docs: Document[]) {
@@ -359,6 +383,7 @@ class MetaSearchAgent implements MetaSearchAgentType {
 					console.log("End stream event emitted.");
 			}, 100);
 		} catch (error: any) {
+			console.trace();
 			console.error("Streaming error:", error);
 			emitter.emit(
 				"data",
@@ -403,4 +428,4 @@ class MetaSearchAgent implements MetaSearchAgentType {
 		return this.emitter;
 	}
 }
-export default MetaSearchAgent;
+export default MetaAgent;
