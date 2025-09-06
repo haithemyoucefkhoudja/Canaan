@@ -18,7 +18,7 @@ model Event {
   coordinates    String?
   tags           String[]
   created_at     DateTime            @default(now())
-  updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at     DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
   actor_links    ActorLink[]
   source_events  EventRelationship[] @relation("SourceEvent")
   target_events  EventRelationship[] @relation("TargetEvent")
@@ -36,7 +36,7 @@ model EventRelationship {
   target_event_id   String   @db.Uuid
   relationship_type String
   created_at        DateTime @default(now())
-  updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   source_event      Event    @relation("SourceEvent", fields: [source_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   target_event      Event    @relation("TargetEvent", fields: [target_event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -93,8 +93,7 @@ model ActorLink {
   event_id   String   @db.Uuid
   role       String?
   created_at DateTime @default(now())
-  
-  updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   actor      Actor    @relation(fields: [actor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -122,8 +121,7 @@ model LocationLink {
   event_id    String   @db.Uuid
   role        String?
   created_at  DateTime @default(now())
-  
-  updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   location    Location @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -154,7 +152,7 @@ model SourceLink {
   event_id   String   @db.Uuid
   relevance  String?
   created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
   event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   source     Source   @relation(fields: [source_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -167,23 +165,23 @@ model Document {
   source_id  String                 @db.Uuid
   content    String
   metadata   Json?
-  embedding  Unsupported("vector(768)")?
+  embedding  Unsupported("vector")?
   created_at DateTime               @default(now()) @db.Timestamptz(6)
   updated_at DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
   source     Source                 @relation(fields: [source_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([embedding])
   @@map("document")
 }
 
 model User {
-  id                 String        @id 
   display_name       String
-  email              String
   photo_url          String?
   xp                 Int                     @default(0)
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at         DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+  email              String
+  id                 String                  @id
+  conversations      Conversation[]
   game_results       GameResult[]
   achievements       UserAchievement[]
   challenge_progress UserChallengeProgress[]
@@ -194,9 +192,36 @@ model User {
   @@map("user")
 }
 
+model Conversation {
+  id         String    @id @default(dbgenerated("gen_random_uuid()"))
+  title      String
+  is_public  Boolean   @default(false)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @default(now()) @db.Timestamptz(6)
+  user_id    String
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages   Message[]
+
+  @@map("conversation")
+}
+
+model Message {
+  id              String       @id @default(dbgenerated("gen_random_uuid()"))
+  content         Json
+  role            Role
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  conversation_id String
+  attachments     Json?
+  reasoning       Json?
+  sources         Json?
+  suggestions     Json?
+  updated_at      DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("message")
+}
+
 model UserGameStats {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id                 String    
   game_type               String
   total_games_played      Int       @default(0)
   total_wins              Int       @default(0)
@@ -212,8 +237,11 @@ model UserGameStats {
   last_played_date        DateTime? @db.Date
   hearts                  Int       @default(3)
   heart_regeneration_time DateTime?
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 String
+  total_perfect_games     Int       @default(0)
   user                    User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, game_type])
@@ -223,15 +251,15 @@ model UserGameStats {
 }
 
 model Achievement {
-  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name              String                 @unique
   description       String
   icon              String
   xp_bonus          Int                    @default(0)
   criteria          Json
   category          String                 @default("general")
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at        DateTime               @default(now()) @db.Timestamptz(6)
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at        DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
   reward_boxes      AchievementRewardBox[]
   challenge_rewards Challenge[]            @relation("ChallengeReward")
   users             UserAchievement[]
@@ -240,25 +268,25 @@ model Achievement {
 }
 
 model Reward {
-  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String
   description  String
   icon         String
   type         String
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at   DateTime          @default(now()) @db.Timestamptz(6)
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at   DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
   reward_boxes RewardBoxReward[]
 
   @@map("reward")
 }
 
 model RewardBox {
-  id                       String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   type                     String
   name                     String
   description              String
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at               DateTime                @default(now()) @db.Timestamptz(6)
+  id                       String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at               DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
   achievements             AchievementRewardBox[]
   daily_reward_content_box DailyRewardContentBox[]
   rewards                  RewardBoxReward[]
@@ -268,9 +296,9 @@ model RewardBox {
 }
 
 model AchievementRewardBox {
-  achievement_id String @db.Uuid
-  box_id         String @db.Uuid
   probability    Float       @default(1.0)
+  achievement_id String      @db.Uuid
+  box_id         String      @db.Uuid
   achievement    Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
   box            RewardBox   @relation(fields: [box_id], references: [id], onDelete: Cascade)
 
@@ -281,10 +309,10 @@ model AchievementRewardBox {
 }
 
 model RewardBoxReward {
-  box_id      String  @db.Uuid
-  reward_id   String @db.Uuid
   probability Float     @default(1.0)
   quantity    Int       @default(1)
+  box_id      String    @db.Uuid
+  reward_id   String    @db.Uuid
   box         RewardBox @relation(fields: [box_id], references: [id], onDelete: Cascade)
   reward      Reward    @relation(fields: [reward_id], references: [id], onDelete: Cascade)
 
@@ -295,10 +323,10 @@ model RewardBoxReward {
 }
 
 model UserAchievement {
-  user_id        String 
-  achievement_id String @db.Uuid
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime    @default(now()) @updatedAt @db.Timestamptz(6)
+  user_id        String
+  achievement_id String      @db.Uuid
   achievement    Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
   user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -307,8 +335,6 @@ model UserAchievement {
 }
 
 model GameResult {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id             String 
   game_type           String   @default("Bingo")
   level               Int
   base_points         Int
@@ -320,6 +346,9 @@ model GameResult {
   speed_bonus         Int      @default(0)
   first_attempt_bonus Int      @default(0)
   played_at           DateTime @default(now())
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String
+  extra               Json?
   user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -329,19 +358,19 @@ model GameResult {
 }
 
 model Challenge {
-  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
   description   String
   type          String
   target        Int
-  reward_id     String @db.Uuid
   variant       String                  @default("static")
   date          DateTime?               @db.Date
   start_date    DateTime?               @db.Date
   end_date      DateTime?               @db.Date
   is_active     Boolean                 @default(true)
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at    DateTime                @default(now()) @db.Timestamptz(6)
+  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reward_id     String                  @db.Uuid
+  updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
   reward        Achievement             @relation("ChallengeReward", fields: [reward_id], references: [id], onDelete: Cascade)
   user_progress UserChallengeProgress[]
 
@@ -353,11 +382,11 @@ model Challenge {
 }
 
 model UserChallengeProgress {
-  user_id      String 
-  challenge_id String @db.Uuid
   progress     Int       @default(0)
   is_completed Boolean   @default(false)
   completed_at DateTime?
+  user_id      String
+  challenge_id String    @db.Uuid
   challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -367,11 +396,11 @@ model UserChallengeProgress {
 }
 
 model DailyReward {
-  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   day           Int                     @unique
   other_rewards Json?
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
+  created_at    DateTime                @default(now()) @db.Timestamptz(6)
+  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
   reward_boxes  DailyRewardContentBox[]
   user_rewards  UserDailyReward[]
 
@@ -379,9 +408,9 @@ model DailyReward {
 }
 
 model DailyRewardContentBox {
-  daily_reward_id String @db.Uuid
-  box_id          String @db.Uuid
   quantity        Int         @default(1)
+  daily_reward_id String      @db.Uuid
+  box_id          String      @db.Uuid
   reward_box      RewardBox   @relation(fields: [box_id], references: [id], onDelete: Cascade)
   daily_reward    DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
 
@@ -390,10 +419,10 @@ model DailyRewardContentBox {
 }
 
 model UserDailyReward {
-  user_id         String 
-  daily_reward_id String @db.Uuid
   claimed_at      DateTime    @default(now())
   date            DateTime    @db.Date
+  user_id         String
+  daily_reward_id String      @db.Uuid
   reward          DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
   user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -402,12 +431,12 @@ model UserDailyReward {
 }
 
 model UserRewardBox {
-  user_id   String 
-  box_id    String @db.Uuid
   is_opened Boolean   @default(false)
   earned_at DateTime  @default(now())
   opened_at DateTime?
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String
+  box_id    String    @db.Uuid
   box       RewardBox @relation(fields: [box_id], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -415,4 +444,9 @@ model UserRewardBox {
   @@index([box_id])
   @@index([is_opened])
   @@map("user_reward_box")
+}
+
+enum Role {
+  USER
+  ASSISTANT
 }

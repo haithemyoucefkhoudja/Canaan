@@ -10,6 +10,7 @@ import { getTokens } from "next-firebase-auth-edge";
 import { cookies } from "next/headers";
 import { authConfig } from "@/config/server-config";
 import { toUser } from "@/shared/user";
+import { ThemeProvider } from "@/components/theme-provider";
 const workSans = Work_Sans({
 	subsets: ["latin"],
 	display: "swap",
@@ -40,14 +41,6 @@ export default async function RootLayout({
 	});
 	const user = tokens ? await toUser(tokens) : null;
 
-	const collections: any[] = [
-		{ handle: "bingo-games", title: "Bingo Games" },
-		{ handle: "historical-quizzes", title: "Historical Quizzes" },
-		{ handle: "memory-games", title: "Memory Games" },
-		{ handle: "puzzle-games", title: "Puzzle Games" },
-		{ handle: "library", title: "Library" },
-	];
-
 	return (
 		<html lang="en">
 			<body
@@ -58,15 +51,22 @@ export default async function RootLayout({
 					"antialiased min-h-screen"
 				)}
 			>
-				<main data-vaul-drawer-wrapper="true">
-					<QueryProvider>
-						<AuthProvider user={user}>
-							{/* <Header collections={collections} /> */}
-							{children}
-							<Toaster />
-						</AuthProvider>
-					</QueryProvider>
-				</main>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+				>
+					<main data-vaul-drawer-wrapper="true">
+						<QueryProvider>
+							<AuthProvider user={user}>
+								{/* <Header collections={collections} /> */}
+								{children}
+								<Toaster />
+							</AuthProvider>
+						</QueryProvider>
+					</main>
+				</ThemeProvider>
 			</body>
 		</html>
 	);
