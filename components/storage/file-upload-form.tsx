@@ -11,7 +11,7 @@ import {
 	Copy,
 	Check,
 } from "lucide-react";
-import CyberpunkGallery from "./gallary";
+import Gallery from "./gallary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -425,7 +425,7 @@ const CyberpunkFileUploadForm = () => {
 
 						{/* Enhanced Gallery with Edit Options */}
 						<div className="space-y-4 min-h-96">
-							<CyberpunkGallery
+							<Gallery
 								uploading={uploadMutation.isPending}
 								completed={uploadMutation.isSuccess}
 								images={files.map((file, index) => ({

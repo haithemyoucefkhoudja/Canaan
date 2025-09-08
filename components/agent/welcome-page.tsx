@@ -1,16 +1,27 @@
 "use client";
 import { BookOpen, Sparkles } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { ChatInput } from "./input";
 import { useChat } from "@/providers/chat-provider";
 import { useInput } from "@/providers/input-provider";
+import { toast } from "sonner";
+import useMounted from "@/hooks/use-mounted";
 
-function WelcomePage() {
-	const { setMessages, setConversation, newChatStarter } = useChat();
+function WelcomePage({ agentIdNotFound }: { agentIdNotFound: string }) {
+	const { newChatStarter } = useChat();
 	const { emptyInput } = useInput();
+	const { mounted } = useMounted();
+
 	useEffect(() => {
 		newChatStarter(emptyInput);
 	}, []);
+
+	useEffect(() => {
+		if (agentIdNotFound && mounted) {
+			console.log("🚀 ~ WelcomePage ~ agentIdNotFound:", agentIdNotFound);
+			toast.error(`There's no Conversation with ID: ${agentIdNotFound}`);
+		}
+	}, [agentIdNotFound, mounted]);
 	return (
 		<main className="h-full w-full">
 			<div className="flex items-center justify-between p-4 border-b border-border/50 bg-background/80 backdrop-blur-md">

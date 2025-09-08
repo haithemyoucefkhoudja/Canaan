@@ -21,6 +21,7 @@ import {
 	StopCircleIcon,
 	Circle,
 	Database,
+	Image,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -35,7 +36,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 		{ name: "Events Overview", icon: Calendar, href: "/dashboard/events" },
 		{ name: "Historical Actors", icon: Users, href: "/dashboard/actors" },
 		{ name: "Locations", icon: MapPin, href: "/dashboard/locations" },
-		{ name: "Sources & Media", icon: FileText, href: "/dashboard/sources" }, // Combined sources and media
+		{ name: "Sources", icon: FileText, href: "/dashboard/sources" }, // Combined sources and media
+
+		{ name: "Media", icon: Image, href: "/dashboard/media" }, // Combined sources and media
 
 		{ name: "Storage Management", icon: Database, href: "/dashboard/storage" }, // Combined sources and media
 		{

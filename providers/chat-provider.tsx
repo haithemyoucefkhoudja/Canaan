@@ -183,6 +183,12 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			queryKey: ["conversations"],
 		});
 	};
+	const invalidateMessages = (conversationId: string) => {
+		queryClient.invalidateQueries({
+			queryKey: ["messages", conversationId],
+			refetchType: "none",
+		});
+	};
 	const updateConversation = useCallback(async () => {
 		const conversationId = conversation!.id;
 		const trimmedHistory = messages.map((msg) => ({
@@ -262,7 +268,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	const sendLLMMessage = async (
 		userMessageContent: MessageContentText[],
 		currentHistory: MessageExtra[],
-		attachments: ClientAttachment[],
+		attachments: (ClientAttachment | RemoteFileAttachment)[],
 		searchMode: string,
 		emptyInput: () => void,
 		conversationId: string,
@@ -281,9 +287,22 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		let messageAttachments: RemoteFileAttachment[] = [];
 		if (attachments && attachments.length > 0) {
 			messageAttachments = await Promise.all(
-				attachments.map((attachment) => {
-					return uploadAttachment(attachment.file, conversationId);
-				})
+				attachments.map(
+					(attachment: ClientAttachment | RemoteFileAttachment) => {
+						if (
+							(attachment as RemoteFileAttachment).url ||
+							(attachment as RemoteFileAttachment).filename ||
+							(attachment as RemoteFileAttachment).size ||
+							(attachment as RemoteFileAttachment).contentType
+						) {
+							return attachment as RemoteFileAttachment;
+						}
+						return uploadAttachment(
+							(attachment as ClientAttachment).file,
+							conversationId
+						);
+					}
+				)
 			);
 		}
 		setRemoteFilesAttachements(messageAttachments);
@@ -441,6 +460,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 				);
 			}
 
+			console.log("🚀 ~ sendLLMMessage ~ messages.length:", messages.length);
 			// 6. Finalize Assistant MessageExtra in DB
 			const finalAssistantMessageData: MessageExtra = {
 				id: "", // DB will assign
@@ -497,7 +517,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 								reasoning: finalAssistantMessageData.reasoning || null,
 								sources: finalAssistantMessageData.sources || null,
 								suggestions: finalAssistantMessageData.suggestions || null,
-								index: finalAssistantMessageData.index + 2,
+								index: finalAssistantMessageData.index,
 							}
 						),
 					MAX_RETRIES
@@ -535,6 +555,8 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 						: msg
 				)
 			);
+
+			invalidateMessages(conversationId);
 		} catch (err: any) {
 			setError(`LLM processing error: ${err.MessageExtra}`);
 			setMessages((prev) =>
@@ -637,7 +659,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			activeConversation = await handleNewChat(user!.id);
 			setConversation(activeConversation);
 			setIsNewChat(true); // Mark as new chat for title generation
-			await push(`/agent/${activeConversation.id}?newChat=true`);
+			await push(`/agent/${activeConversation.id}`);
 		}
 		if (!activeConversation) {
 			return;

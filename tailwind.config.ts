@@ -11,6 +11,17 @@ module.exports = {
 	prefix: "",
 	theme: {
 		extend: {
+			typography: ({ theme }: any) => ({
+				DEFAULT: {
+					css: {
+						// This tells the bold tags within prose to inherit their color
+						// from the parent element, which is exactly what you want.
+						"--tw-prose-bold": theme("colors.foreground"), // Or use 'inherit' if you prefer
+						// You could also do this for other elements if needed
+						// '--tw-prose-headings': theme('colors.foreground'),
+					},
+				},
+			}),
 			container: {
 				center: true,
 				padding: "var(--sides)",
@@ -54,14 +65,14 @@ module.exports = {
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",
 				chart: {
-					1: "hsl(var(--chart-1))",
-					2: "hsl(var(--chart-2))",
-					3: "hsl(var(--chart-3))",
-					4: "hsl(var(--chart-4))",
-					5: "hsl(var(--chart-5))",
+					"1": "hsl(var(--chart-1))",
+					"2": "hsl(var(--chart-2))",
+					"3": "hsl(var(--chart-3))",
+					"4": "hsl(var(--chart-4))",
+					"5": "hsl(var(--chart-5))",
 				},
 				sidebar: {
-					DEFAULT: "hsl(var(--sidebar))",
+					DEFAULT: "hsl(var(--sidebar-background))",
 					foreground: "hsl(var(--sidebar-foreground))",
 					primary: "hsl(var(--sidebar-primary))",
 					"primary-foreground": "hsl(var(--sidebar-primary-foreground))",
@@ -83,21 +94,65 @@ module.exports = {
 				fold: "var(--height-fold)",
 			},
 			fontSize: {
-				xs: ["0.75rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
-				sm: ["0.875rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
-				base: ["1rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
-				lg: ["1.125rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
-				xl: ["1.25rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
-				"2xl": ["1.5rem", { lineHeight: "1.2", letterSpacing: "-0.015em" }],
+				xs: [
+					"0.75rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
+				sm: [
+					"0.875rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
+				base: [
+					"1rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
+				lg: [
+					"1.125rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
+				xl: [
+					"1.25rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
+				"2xl": [
+					"1.5rem",
+					{
+						lineHeight: "1.2",
+						letterSpacing: "-0.015em",
+					},
+				],
 			},
 			keyframes: {
 				"collapsible-down": {
-					from: { height: "0" },
-					to: { height: "var(--radix-collapsible-content-height)" },
+					from: {
+						height: "0",
+					},
+					to: {
+						height: "var(--radix-collapsible-content-height)",
+					},
 				},
 				"collapsible-up": {
-					from: { height: "var(--radix-collapsible-content-height)" },
-					to: { height: "0" },
+					from: {
+						height: "var(--radix-collapsible-content-height)",
+					},
+					to: {
+						height: "0",
+					},
 				},
 			},
 			animation: {

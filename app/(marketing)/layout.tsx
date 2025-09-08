@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/header";
-import { Fragment } from "react";
+import { GridPattern } from "@/components/shapes/grid";
+import { cn } from "@/lib/utils";
 
 export default async function RootLayout({
 	children,
@@ -15,9 +16,18 @@ export default async function RootLayout({
 	];
 
 	return (
-		<Fragment>
+		<section className="relative photography-banner">
+			{/* <div className="relative flex size-full  border bg-background"> */}
+			<GridPattern
+				x={-1}
+				y={-1}
+				className={cn(
+					"[mask-image:linear-gradient(to_bottom_right,white,transparent,transparent)] "
+				)}
+			/>
 			<Header collections={collections} />
 			{children}
-		</Fragment>
+			{/* </div> */}
+		</section>
 	);
 }

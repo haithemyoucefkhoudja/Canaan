@@ -415,8 +415,9 @@ class MetaAgent implements MetaAgentType {
 						...message,
 						...attachments.map((attachment) => {
 							return {
-								type: "image_url",
-								image_url: { url: attachment.url },
+								type: "media",
+								source_type: "url",
+								fileUri: attachment.url,
 							};
 						}),
 					],
