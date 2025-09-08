@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LogoSvg } from "@/components/icons/logo-svg";
 import { AuthStatus } from "@/components/auth.status";
+import ThemeIndicator from "@/components/theme-indicator";
 
 export const navItems = [
 	{
@@ -34,6 +35,7 @@ export function Header({ collections }: HeaderProps) {
 			<div className="block flex-none md:hidden">
 				<MobileMenu collections={collections} />
 			</div>
+
 			<Link href="/" className="md:col-span-3 xl:col-span-2" prefetch>
 				<LogoSvg className="w-auto h-6 max-md:place-self-center md:w-full md:h-auto max-w-96" />
 			</Link>
@@ -55,6 +57,8 @@ export function Header({ collections }: HeaderProps) {
 							</Link>
 						</li>
 					))}
+
+					<ThemeIndicator />
 					<AuthStatus />
 				</ul>
 			</nav>

@@ -121,6 +121,17 @@ const Textarea = memo(() => {
 					});
 					break;
 				}
+				if (item.types.some((type) => type.includes("text/plain"))) {
+					const type = item.types.find((type) => type.includes("text/plain"));
+					const text = await (await item.getType(type as string)).text();
+					console.log("🚀 ~ handleKeyDown ~ text:", text);
+
+					if (text) {
+						setInput((prev) => prev + ` ${text}`);
+					}
+
+					break;
+				}
 			}
 		}
 	};

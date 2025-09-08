@@ -4,15 +4,12 @@ import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import useMounted from "@/hooks/use-mounted";
 
 function ThemeIndicator() {
 	const { theme, setTheme } = useTheme();
 	const [isRotating, setIsRotating] = useState(false);
-	const [mounted, setMounted] = useState(false);
-	// Effect to set mounted state to true after the initial render on the client
-	useEffect(() => {
-		setMounted(true);
-	}, []);
+	const { mounted } = useMounted();
 
 	const handleClick = () => {
 		setIsRotating(true);

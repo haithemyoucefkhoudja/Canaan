@@ -8,18 +8,23 @@ import { useGetMessages } from "@/hooks/use-messages-query";
 import { ListScrollArea } from "../ui/list-scroll-area";
 import { useConversations } from "@/providers/conversation-provider";
 import { Conversation } from "@prisma/client";
-import { useAuth } from "../firebase-auth/AuthContext";
-import { v4 as uuid } from "uuid";
+
 import { useRouter } from "next/navigation";
+import {
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarMenuSubItem,
+} from "../ui/sidebar";
 type ConversationElementType = {
 	conversationItem: Conversation;
 	onSelectConversation: (conversationItem: Conversation) => void;
 };
-export default function ConversationElement({
+function ConversationElement({
 	conversationItem,
 	onSelectConversation,
 }: ConversationElementType) {
-	const { conversation: activeConversation } = useChat();
+	const { conversation: activeConversation, isLoading } = useChat();
 
 	const conversationId = activeConversation?.id || "";
 	const conversationTitle =
@@ -29,48 +34,43 @@ export default function ConversationElement({
 			: conversationItem.title;
 
 	return (
-		<Button
-			disabled={conversationId === conversationItem.id}
-			key={conversationItem.id}
-			id={String(conversationItem.id)}
-			variant={conversationId === conversationItem.id ? "secondary" : "ghost"}
-			className="w-full justify-start mb-2"
-			onClick={() => onSelectConversation(conversationItem)}
-		>
-			<MessageSquare className="mr-2 h-4 w-4" />
-			<div className="flex flex-col items-start overflow-x-hidden">
-				<span className="truncate w-full text-left">{conversationTitle}</span>
-				<div className="flex items-center space-x-2">
-					<span className="text-xs text-muted-foreground">
-						{new Date(conversationItem.created_at).toLocaleTimeString([], {
-							hour: "2-digit",
-							minute: "2-digit",
-						})}
-					</span>
-					<span className="text-xs text-muted-foreground">
-						{new Date(conversationItem.created_at).toLocaleDateString([], {
-							day: "2-digit",
-							month: "2-digit",
-							year: "numeric",
-						})}
-					</span>
+		<SidebarMenuSubItem>
+			<Button
+				disabled={conversationId === conversationItem.id && !isLoading.state}
+				key={conversationItem.id}
+				id={String(conversationItem.id)}
+				className="w-full justify-start mb-2"
+				variant={conversationId === conversationItem.id ? "secondary" : "ghost"}
+				onClick={() => onSelectConversation(conversationItem)}
+			>
+				<MessageSquare className="mr-2 h-4 w-4" />
+				<div className="flex flex-col items-start overflow-x-hidden">
+					<span className="truncate w-full text-left">{conversationTitle}</span>
+					<div className="flex items-center space-x-2">
+						<span className="text-xs text-muted-foreground">
+							{new Date(conversationItem.created_at).toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							})}
+						</span>
+						<span className="text-xs text-muted-foreground">
+							{new Date(conversationItem.created_at).toLocaleDateString([], {
+								day: "2-digit",
+								month: "2-digit",
+								year: "numeric",
+							})}
+						</span>
+					</div>
 				</div>
-			</div>
-		</Button>
+			</Button>
+		</SidebarMenuSubItem>
 	);
 }
 
 export function ConversationList() {
-	const { user } = useAuth();
 	const router = useRouter();
-	const {
-		setConversation,
-		setError,
-		error,
-		isLoading: chatLoading,
-		setMessages,
-		conversation,
-	} = useChat();
+	const { setConversation, setError, error, setMessages, conversation } =
+		useChat();
 
 	const onSelectConversation = (conversation: Conversation) => {
 		router.push(`/agent/${conversation.id}`);
@@ -179,7 +179,7 @@ export function ConversationList() {
 			<div className="w-full h-96 overflow-hidden ">
 				{" "}
 				<ListScrollArea className="h-full ">
-					{isLoading || chatLoading.state ? (
+					{isLoading ? (
 						<div className="text-center text-muted-foreground py-4">
 							Loading ...
 						</div>
@@ -197,17 +197,17 @@ export function ConversationList() {
 									return null;
 
 								return (
-									<div key={uuid()} className="mb-4">
-										<h2 className="text-sm font-medium text-muted-foreground mb-2">
-											{groupName}
-										</h2>
-										{groupConversations.map((conversationItem) => (
-											<ConversationElement
-												onSelectConversation={onSelectConversation}
-												conversationItem={conversationItem}
-											/>
-										))}
-									</div>
+									<SidebarGroup>
+										<SidebarGroupLabel> {groupName}</SidebarGroupLabel>
+										<SidebarGroupContent>
+											{groupConversations.map((chat) => (
+												<ConversationElement
+													onSelectConversation={onSelectConversation}
+													conversationItem={chat}
+												/>
+											))}
+										</SidebarGroupContent>
+									</SidebarGroup>
 								);
 							})}
 						</InfiniteScroll>

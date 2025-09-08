@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-
+import { Location } from "@prisma/client";
 export async function getLocations() {
 	const { data, error } = await supabase
 		.from("location")
@@ -9,15 +9,13 @@ export async function getLocations() {
 	if (error) throw error;
 	return data;
 }
-export async function createLocation(locationData: any) {
+export async function createLocation(
+	locationData: Omit<Location, "id" | "created_at" | "updated_at">
+) {
 	const { data, error } = await supabase
 		.from("location")
 		.insert({
-			name: locationData.name,
-			description: locationData.description,
-			coordinates: locationData.coordinates,
-			location_type: locationData.location_type,
-			parent_location: locationData.parent_location || null,
+			...locationData,
 		})
 		.select()
 		.single();
@@ -26,16 +24,13 @@ export async function createLocation(locationData: any) {
 	return data;
 }
 
-export async function updateLocation(locationId: string, locationData: any) {
+export async function updateLocation(
+	locationId: string,
+	locationData: Omit<Location, "id" | "created_at" | "updated_at">
+) {
 	const { data, error } = await supabase
 		.from("location")
-		.update({
-			name: locationData.name,
-			description: locationData.description,
-			coordinates: locationData.coordinates,
-			location_type: locationData.location_type,
-			parent_location: locationData.parent_location || null,
-		})
+		.update({ ...locationData })
 		.eq("id", locationId)
 		.select()
 		.single();
