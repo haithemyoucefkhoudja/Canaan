@@ -1,6 +1,4 @@
 import { SourcesRepository } from "@/components/dashboard/sources-repository";
-import { MediaAssetsManagement } from "@/components/dashboard/media-assets-management";
-import { FileText, ImageIcon } from "lucide-react";
 
 export default function SourcesPage() {
 	return (

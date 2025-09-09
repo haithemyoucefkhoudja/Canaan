@@ -7,7 +7,6 @@ import {
 	RewardBoxFormValues,
 } from "@/schemas/rewardBox.schema";
 import { useCreateRewardBox, useUpdateRewardBox } from "@/hooks/useRewardBoxes";
-import { RewardBox } from "@/types/database.types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RewardBox } from "@prisma/client";
 
 interface RewardBoxFormProps {
 	rewardBox: RewardBox | null;
@@ -37,6 +37,7 @@ export function RewardBoxForm({ rewardBox, onFinished }: RewardBoxFormProps) {
 			name: rewardBox?.name || "",
 			description: rewardBox?.description || "",
 			type: rewardBox?.type || "",
+			icon: rewardBox?.icon || "",
 		},
 	});
 
