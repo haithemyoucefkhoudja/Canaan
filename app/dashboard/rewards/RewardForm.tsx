@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { rewardSchema, RewardFormValues } from "@/schemas/reward.schema";
 import { useCreateReward, useUpdateReward } from "@/hooks/useRewards";
-import { Reward } from "@/types/database.types";
+import { Reward } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import {

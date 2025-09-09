@@ -2,11 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/supabase";
-import {
-	Challenge,
-	NewChallenge,
-	UserChallengeProgress,
-} from "@/types/database.types";
+
+type Challenge = any;
+type NewChallenge = any;
+type UserChallengeProgress = any;
+
 import { toast } from "sonner";
 
 const challengeKey = "challenges";

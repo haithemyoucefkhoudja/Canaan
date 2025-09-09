@@ -52,11 +52,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 		{ name: "Reward Boxes", icon: Box, href: "/dashboard/reward-boxes" },
 
 		{
-			name: "Challanges",
-			icon: StopCircleIcon,
-			href: "/dashboard/reward-boxes",
-		},
-		{
 			name: "Achievements",
 			icon: Star,
 			href: "/dashboard/achievements",

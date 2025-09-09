@@ -10,7 +10,7 @@ import {
 	useCreateAchievement,
 	useUpdateAchievement,
 } from "@/hooks/useAchievements";
-import { Achievement } from "@/types/database.types";
+import { Achievement } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 interface AchievementFormProps {
-	achievement: Achievement | null;
+	achievement: Omit<Achievement, "created_at" | "updated_at"> | null;
 	onFinished: () => void;
 }
 

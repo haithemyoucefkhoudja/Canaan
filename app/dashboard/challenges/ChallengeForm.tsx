@@ -8,8 +8,8 @@ import {
 } from "@/schemas/challenge.schema";
 import { useCreateChallenge, useUpdateChallenge } from "@/hooks/useChallenges";
 import { useGetAchievements } from "@/hooks/useAchievements";
-import { Challenge } from "@/types/database.types";
-
+// import { Challenge } from "@prisma/client";
+type Challenge = any;
 import { Button } from "@/components/ui/button";
 import {
 	Form,
