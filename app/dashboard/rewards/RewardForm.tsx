@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 interface RewardFormProps {
-	reward: Reward | null;
+	reward: Omit<Reward, "created_at" | "updated_at"> | null;
 	onFinished: () => void;
 }
 

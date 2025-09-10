@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RewardBox } from "@prisma/client";
 
 interface RewardBoxFormProps {
-	rewardBox: RewardBox | null;
+	rewardBox: Omit<RewardBox, "created_at" | "updated_at"> | null;
 	onFinished: () => void;
 }
 
