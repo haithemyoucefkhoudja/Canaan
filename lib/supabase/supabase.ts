@@ -7,6 +7,8 @@ export function createClient() {
 	return createBrowserClient(supabaseUrl, supabaseAnonKey, {
 		accessToken: async () => {
 			const token = await getToken();
+			console.log("🚀 ~ createClient ~ token:", token);
+
 			return token?.token ?? null;
 		},
 	});

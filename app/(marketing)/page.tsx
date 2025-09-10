@@ -1,7 +1,6 @@
 import { HomeSidebar } from "@/components/layout/sidebar/home-sidebar";
 import { PageLayout } from "@/components/layout/page-layout";
-import { LatestProductCard } from "@/components/layout/home-page-elements/latest-product-card";
-import { Badge } from "@/components/ui/badge";
+import { GameCard } from "@/components/layout/home-page-elements/game-card";
 import LevelDrop from "@/components/gamification/level-drop";
 
 const gameCategories = [
@@ -82,14 +81,10 @@ export default async function Home() {
 					<LevelDrop />
 					{featuredGames.length > 0 && (
 						<>
-							<LatestProductCard
-								className="col-span-2"
-								product={lastGame}
-								principal
-							/>
+							<GameCard className="col-span-2" product={lastGame} principal />
 
 							{restGames.map((product: any, index: number) => (
-								<LatestProductCard
+								<GameCard
 									className="col-span-1"
 									key={product.id}
 									product={product}

@@ -25,11 +25,7 @@ import { loginWithCredential } from "@/api/index";
 import { useLoadingCallback } from "react-loading-hook";
 import { getFirebaseAuth } from "@/components/firebase-auth/firebase";
 import { useRedirectAfterLogin } from "@/shared/useRedirectAfterLogin";
-import {
-	getGoogleProvider,
-	loginWithProvider,
-	loginWithProviderUsingRedirect,
-} from "./firebase";
+import { getGoogleProvider, loginWithProvider } from "./firebase";
 import {
 	loginFormSchema,
 	LoginFormValues,
@@ -43,8 +39,6 @@ import { GoogleLogoSvg } from "@/components/icons/google-icon";
 import { getOrCreateUserFromAuth } from "@/lib/supabase";
 
 export default function LoginPage() {
-	const redirect = useRedirectParam();
-
 	const [showPassword, setShowPassword] = useState(false);
 	const [handleLoginWithEmailAndPassword, isEmailLoading, emailPasswordError] =
 		useLoadingCallback(async ({ email, password }: LoginFormValues) => {

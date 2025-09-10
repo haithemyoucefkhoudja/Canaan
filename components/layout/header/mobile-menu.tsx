@@ -6,10 +6,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { navItems } from "./index";
-import { SidebarLinks } from "../sidebar/product-sidebar-links";
-import { ShopLinks } from "../shop-links";
+import { SidebarLinks } from "../sidebar/sidebar-links";
+import { AppLinks } from "../app-links";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
-import { Hamburger, HamburgerIcon, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 
 interface MobileMenuProps {
 	collections: any[];
@@ -103,7 +103,7 @@ export default function MobileMenu({ collections }: MobileMenuProps) {
 									))}
 								</nav>
 
-								<ShopLinks label="Categories" collections={collections} />
+								<AppLinks label="Categories" collections={collections} />
 
 								<div className="mt-auto mb-6 text-sm leading-tight opacity-50">
 									<p className="italic">Khazal Al-Majidi</p>

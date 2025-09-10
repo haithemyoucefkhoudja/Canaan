@@ -98,8 +98,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 										variant={isActive ? "default" : "ghost"}
 										className={`w-full justify-start gap-3 ${
 											isActive
-												? "bg-sidebar-primary text-sidebar-primary-foreground"
-												: "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+												? " bg-background  text-secondary-foreground hover:bg-secondary"
+												: "text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground"
 										}`}
 									>
 										<item.icon className="h-4 w-4" />

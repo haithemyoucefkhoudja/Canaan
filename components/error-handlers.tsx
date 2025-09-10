@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-	<div className="min-h-screen mx-auto relative py-20 px-4 flex items-center justify-center">
+	<div className="min-h-[100dvh-10rem] mx-auto relative py-20 px-4 flex items-center justify-center">
 		{children}
 	</div>
 );
