@@ -94,6 +94,34 @@ export async function getConversations(
 }
 
 /**
+ * Fetches a single conversation by its unique ID.
+ *
+ * @param conversationId - The unique ID of the conversation to fetch.
+ * @returns The conversation object, or null if not found.
+ */
+export async function getConversation(
+	conversationId: string
+): Promise<Conversation | null> {
+	const { data, error } = await supabase
+		.from("conversation")
+		.select("*")
+		.eq("id", conversationId) // Filter by the primary key 'id'
+		.single(); // Expect exactly one row. Errors if 0 or >1 rows are found.
+
+	// Handle the specific "not found" error gracefully
+	// PostgREST error code 'PGRST116' means 'JSON object requested, but 0 rows returned'
+	if (error && error.code === "PGRST116") {
+		return null; // The conversation was not found, which is a valid case.
+	}
+
+	// For any other database or network error, throw an exception
+	if (error) {
+		throw new Error(`Could not load conversation: ${error.message}`);
+	}
+
+	return data;
+}
+/**
  * Fetches all messages for a specific conversation belonging to a user.
  *
  * @param conversationId - The ID of the conversation to fetch.

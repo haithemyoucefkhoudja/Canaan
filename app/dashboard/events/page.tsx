@@ -1,7 +1,5 @@
-import { EventsManagement } from "@/components/events-management"
+import { EventsManagement } from "@/components/dashboard/events-management";
 
 export default function EventsPage() {
-  return (
-      <EventsManagement />
-  )
+	return <EventsManagement />;
 }

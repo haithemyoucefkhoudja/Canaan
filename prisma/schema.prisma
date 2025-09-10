@@ -11,11 +11,9 @@ datasource db {
 model Event {
   id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
-  description    String?
+  description    String
   start_date     DateTime?
   end_date       DateTime?
-  location       String?
-  coordinates    String?
   tags           String[]
   created_at     DateTime            @default(now())
   updated_at     DateTime            @default(now()) @updatedAt @db.Timestamptz(6)
@@ -74,7 +72,8 @@ model Actor {
   id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
   actor_type     String
-  description    String?
+  description    String
+  photo_url      String?
   birth_date     DateTime?
   death_date     DateTime?
   founded_date   DateTime?
@@ -184,8 +183,8 @@ model User {
   conversations      Conversation[]
   game_results       GameResult[]
   achievements       UserAchievement[]
-  challenge_progress UserChallengeProgress[]
-  daily_rewards      UserDailyReward[]
+  // challenge_progress UserChallengeProgress[]
+  // daily_rewards      UserDailyReward[]
   game_stats         UserGameStats[]
   reward_boxes       UserRewardBox[]
 
@@ -262,7 +261,7 @@ model Achievement {
   id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   updated_at        DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
   reward_boxes      AchievementRewardBox[]
-  challenge_rewards Challenge[]            @relation("ChallengeReward")
+  // challenge_rewards Challenge[]            @relation("ChallengeReward")
   users             UserAchievement[]
 
   @@map("achievement")
@@ -285,11 +284,12 @@ model RewardBox {
   type                     String
   name                     String
   description              String
+  icon                     String
   created_at               DateTime                @default(now()) @db.Timestamptz(6)
   id                       String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   updated_at               DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
   achievements             AchievementRewardBox[]
-  daily_reward_content_box DailyRewardContentBox[]
+  // daily_reward_content_box DailyRewardContentBox[]
   rewards                  RewardBoxReward[]
   user_boxes               UserRewardBox[]
 
@@ -358,78 +358,78 @@ model GameResult {
   @@map("game_result")
 }
 
-model Challenge {
-  name          String
-  description   String
-  type          String
-  target        Int
-  variant       String                  @default("static")
-  date          DateTime?               @db.Date
-  start_date    DateTime?               @db.Date
-  end_date      DateTime?               @db.Date
-  is_active     Boolean                 @default(true)
-  created_at    DateTime                @default(now()) @db.Timestamptz(6)
-  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reward_id     String                  @db.Uuid
-  updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
-  reward        Achievement             @relation("ChallengeReward", fields: [reward_id], references: [id], onDelete: Cascade)
-  user_progress UserChallengeProgress[]
+// model Challenge {
+//   name          String
+//   description   String
+//   type          String
+//   target        Int
+//   variant       String                  @default("static")
+//   date          DateTime?               @db.Date
+//   start_date    DateTime?               @db.Date
+//   end_date      DateTime?               @db.Date
+//   is_active     Boolean                 @default(true)
+//   created_at    DateTime                @default(now()) @db.Timestamptz(6)
+//   id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   reward_id     String                  @db.Uuid
+//   updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+//   reward        Achievement             @relation("ChallengeReward", fields: [reward_id], references: [id], onDelete: Cascade)
+//   user_progress UserChallengeProgress[]
 
-  @@index([date])
-  @@index([variant])
-  @@index([start_date, end_date])
-  @@index([is_active])
-  @@map("challenge")
-}
+//   @@index([date])
+//   @@index([variant])
+//   @@index([start_date, end_date])
+//   @@index([is_active])
+//   @@map("challenge")
+// }
 
-model UserChallengeProgress {
-  progress     Int       @default(0)
-  is_completed Boolean   @default(false)
-  completed_at DateTime?
-  user_id      String
-  challenge_id String    @db.Uuid
-  challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
-  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+// model UserChallengeProgress {
+//   progress     Int       @default(0)
+//   is_completed Boolean   @default(false)
+//   completed_at DateTime?
+//   user_id      String
+//   challenge_id String    @db.Uuid
+//   // challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+//   user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@id([user_id, challenge_id])
-  @@index([challenge_id])
-  @@map("user_challenge_progress")
-}
+//   @@id([user_id, challenge_id])
+//   @@index([challenge_id])
+//   @@map("user_challenge_progress")
+// }
 
-model DailyReward {
-  day           Int                     @unique
-  other_rewards Json?
-  created_at    DateTime                @default(now()) @db.Timestamptz(6)
-  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
-  reward_boxes  DailyRewardContentBox[]
-  user_rewards  UserDailyReward[]
+// model DailyReward {
+//   day           Int                     @unique
+//   other_rewards Json?
+//   created_at    DateTime                @default(now()) @db.Timestamptz(6)
+//   id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+//   reward_boxes  DailyRewardContentBox[]
+//   user_rewards  UserDailyReward[]
 
-  @@map("daily_reward")
-}
+//   @@map("daily_reward")
+// }
 
-model DailyRewardContentBox {
-  quantity        Int         @default(1)
-  daily_reward_id String      @db.Uuid
-  box_id          String      @db.Uuid
-  reward_box      RewardBox   @relation(fields: [box_id], references: [id], onDelete: Cascade)
-  daily_reward    DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
+// model DailyRewardContentBox {
+//   quantity        Int         @default(1)
+//   daily_reward_id String      @db.Uuid
+//   box_id          String      @db.Uuid
+//   reward_box      RewardBox   @relation(fields: [box_id], references: [id], onDelete: Cascade)
+//   // daily_reward    DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
 
-  @@id([daily_reward_id, box_id])
-  @@map("daily_reward_content_box")
-}
+//   @@id([daily_reward_id, box_id])
+//   @@map("daily_reward_content_box")
+// }
 
-model UserDailyReward {
-  claimed_at      DateTime    @default(now())
-  date            DateTime    @db.Date
-  user_id         String
-  daily_reward_id String      @db.Uuid
-  reward          DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
-  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+// model UserDailyReward {
+//   claimed_at      DateTime    @default(now())
+//   date            DateTime    @db.Date
+//   user_id         String
+//   daily_reward_id String      @db.Uuid
+//   // reward          DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
+//   user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@id([user_id, daily_reward_id, date])
-  @@map("user_daily_reward")
-}
+//   @@id([user_id, daily_reward_id, date])
+//   @@map("user_daily_reward")
+// }
 
 model UserRewardBox {
   is_opened Boolean   @default(false)

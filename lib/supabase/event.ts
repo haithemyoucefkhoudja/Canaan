@@ -1,22 +1,26 @@
+import { Event } from "@prisma/client";
 import { supabase } from "./supabase";
-
+type EventInput = Omit<Event, "id" | "created_at" | "updated_at">;
 // Database query functions
 export async function getEvents() {
 	const { data, error } = await supabase
-		.from("events")
+		.from("event")
 		.select(
 			`
         *,
-        sourceLinks:source_links (
+        sourceLinks:source_link (
           source:source (*)
         ),
-        actorLinks:actor_links (
+		locationLinks:location_link (
+          location:location (*)
+        ),
+        actorLinks:actor_link (
           role,
           actor:actor (*)
         ),
-        mediaAssets:media_assets (*),
-        sourceRelationships:event_relationships!source_event_id (*),
-        targetRelationships:event_relationships!target_event_id (*)
+        mediaAssets:media_asset (*),
+        sourceRelationships:event_relationship!source_event_id (*),
+        targetRelationships:event_relationship!target_event_id (*)
       `
 		)
 		.order("created_at", { ascending: false });
@@ -27,18 +31,18 @@ export async function getEvents() {
 
 export async function getEventById(id: string) {
 	const { data, error } = await supabase
-		.from("events")
+		.from("event")
 		.select(
 			`
         *,
-        sourceLinks:source_links (
+        sourceLinks:source_link (
           source:source (*)
         ),
-        mediaAssets:media_assets (*),
-        actorLinks:actor_links (
+        mediaAssets:media_asset (*),
+        actorLinks:actor_link (
           actor:actor (*)
         ),
-        locationLinks:location_links (
+        locationLinks:location_link (
           location:location (*)
         )
       `
@@ -51,10 +55,10 @@ export async function getEventById(id: string) {
 }
 
 export async function getEventRelationships() {
-	const { data, error } = await supabase.from("event_relationships").select(`
+	const { data, error } = await supabase.from("event_relationship").select(`
         *,
-        sourceEvent:events!source_event_id (*),
-        targetEvent:events!target_event_id (*)
+        sourceEvent:event!source_event_id (*),
+        targetEvent:event!target_event_id (*)
       `);
 
 	if (error) throw error;
@@ -63,19 +67,18 @@ export async function getEventRelationships() {
 
 // Create functions
 export async function createEvent(
-	eventData: any,
+	eventData: EventInput,
 	sourceIds: string[] = [],
-	actorLinks: { actorId: string; role: string }[] = []
+	actorLinks: { actorId: string; role: string }[] = [],
+	locationsIds: string[] = []
 ) {
 	const { data: event, error: eventError } = await supabase
-		.from("events")
+		.from("event")
 		.insert({
 			name: eventData.name,
 			description: eventData.description,
 			start_date: eventData.start_date || null,
 			end_date: eventData.end_date || null,
-			location: eventData.location,
-			coordinates: eventData.coordinates,
 			tags: eventData.tags || [],
 		})
 		.select()
@@ -85,28 +88,40 @@ export async function createEvent(
 
 	// Link source to event
 	if (sourceIds.length > 0) {
-		const sourceLinks = sourceIds.map((sourceId) => ({
-			eventId: event.id,
-			sourceId: sourceId,
+		const sourceLinks = sourceIds.map((source_id) => ({
+			event_id: event.id,
+			source_id: source_id,
 			relevance: "primary",
 		}));
 
 		const { error: linkError } = await supabase
-			.from("source_links")
+			.from("source_link")
 			.insert(sourceLinks);
 
 		if (linkError) throw linkError;
 	}
 
+	if (locationsIds.length > 0) {
+		const locationLinks = locationsIds.map((locationId) => ({
+			event_id: event.id,
+			location_id: locationId,
+		}));
+
+		const { error: linkError } = await supabase
+			.from("location_link")
+			.insert(locationLinks);
+
+		if (linkError) throw linkError;
+	}
 	if (actorLinks.length > 0) {
 		const actorLinksData = actorLinks.map((link) => ({
-			eventId: event.id,
-			actorId: link.actorId,
+			event_id: event.id,
+			actor_id: link.actorId,
 			role: link.role,
 		}));
 
 		const { error: actorLinkError } = await supabase
-			.from("actor_links")
+			.from("actor_link")
 			.insert(actorLinksData);
 
 		if (actorLinkError) throw actorLinkError;
@@ -116,56 +131,67 @@ export async function createEvent(
 }
 
 export async function updateEvent(
-	eventId: string,
-	eventData: any,
+	event_id: string,
+	eventData: EventInput,
 	sourceIds: string[] = [],
-	actorLinks: { actorId: string; role: string }[] = []
+	actorLinks: { actorId: string; role: string }[] = [],
+	locationsIds: string[] = []
 ) {
 	const { data: event, error: eventError } = await supabase
-		.from("events")
+		.from("event")
 		.update({
 			name: eventData.name,
 			description: eventData.description,
 			start_date: eventData.start_date || null,
 			end_date: eventData.end_date || null,
-			location: eventData.location,
-			coordinates: eventData.coordinates,
 			tags: eventData.tags || [],
 		})
-		.eq("id", eventId)
+		.eq("id", event_id)
 		.select()
 		.single();
 
 	if (eventError) throw eventError;
 
 	// Remove existing source links
-	await supabase.from("source_links").delete().eq("eventId", eventId);
-	await supabase.from("actor_links").delete().eq("eventId", eventId);
+	await supabase.from("source_link").delete().eq("event_id", event_id);
+	await supabase.from("actor_link").delete().eq("event_id", event_id);
+	await supabase.from("location_link").delete().eq("event_id", event_id);
 
 	// Add new source links
 	if (sourceIds.length > 0) {
-		const sourceLinks = sourceIds.map((sourceId) => ({
-			eventId: eventId,
-			sourceId: sourceId,
+		const sourceLinks = sourceIds.map((source_id) => ({
+			event_id: event_id,
+			source_id: source_id,
 			relevance: "primary",
 		}));
 
 		const { error: linkError } = await supabase
-			.from("source_links")
+			.from("source_link")
 			.insert(sourceLinks);
 
 		if (linkError) throw linkError;
 	}
+	if (locationsIds.length > 0) {
+		const locationLinks = locationsIds.map((locationId) => ({
+			event_id: event.id,
+			location_id: locationId,
+		}));
 
+		const { error: linkError } = await supabase
+			.from("location_link")
+			.insert(locationLinks);
+
+		if (linkError) throw linkError;
+	}
 	if (actorLinks.length > 0) {
 		const actorLinksData = actorLinks.map((link) => ({
-			eventId: eventId,
-			actorId: link.actorId,
+			event_id: event_id,
+			actor_id: link.actorId,
 			role: link.role,
 		}));
 
 		const { error: actorLinkError } = await supabase
-			.from("actor_links")
+			.from("actor_link")
 			.insert(actorLinksData);
 
 		if (actorLinkError) throw actorLinkError;
@@ -176,17 +202,20 @@ export async function updateEvent(
 
 export async function getEventsByLocation(locationName: string, year?: number) {
 	let query = supabase
-		.from("events")
+		.from("event")
 		.select(
 			`
         *,
-        locationLinks:location_links (
+        locationLinks:location_link (
           location:location (*)
         ),
-        actorLinks:actor_links (
+        actorLinks:actor_link (
           role,
           actor:actor (*)
-        )
+        ),
+		sourceLinks:source_link (
+          source:source (*)
+        ),
       `
 		)
 		.or(
@@ -205,28 +234,31 @@ export async function getEventsByLocation(locationName: string, year?: number) {
 	return data;
 }
 
-export async function deleteEvent(eventId: string) {
-	await supabase.from("source_links").delete().eq("eventId", eventId);
-	await supabase.from("actor_links").delete().eq("eventId", eventId);
-	await supabase.from("location_links").delete().eq("eventId", eventId);
+export async function deleteEvent(event_id: string) {
+	await supabase.from("source_link").delete().eq("event_id", event_id);
+	await supabase.from("actor_link").delete().eq("event_id", event_id);
+	await supabase.from("location_link").delete().eq("event_id", event_id);
 
-	const { error } = await supabase.from("events").delete().eq("id", eventId);
+	const { error } = await supabase.from("event").delete().eq("id", event_id);
 	if (error) throw error;
 }
 
 export async function getEventsByDateRange(startYear: number, endYear: number) {
 	const { data, error } = await supabase
-		.from("events")
+		.from("event")
 		.select(
 			`
       *,
-      locationLinks:location_links (
+      locationLinks:location_link (
         location:location (*)
       ),
-      actorLinks:actor_links (
+      actorLinks:actor_link (
         role,
         actor:actor (*)
-      )
+      ),
+	   sourceLinks:source_link (
+          source:source (*)
+    ),
     `
 		)
 		.gte("start_date", `${startYear}-01-01`)

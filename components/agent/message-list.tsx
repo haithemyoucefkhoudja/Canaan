@@ -11,9 +11,10 @@ import { Loader } from "../ui/loader";
 import { useGetMessages } from "@/hooks/use-messages-query";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Conversation } from "@prisma/client";
 type MessageListWrapperProps = {
 	conversationId: string;
-	newChatParam: boolean;
+	conversation: Conversation;
 };
 type MessageListProps = {
 	queryMessages: MessageExtra[];
@@ -51,10 +52,9 @@ const MessageList = memo(function MessageList({
 });
 const MessageListWrapper = memo(function MessageListWrapper({
 	conversationId,
-	newChatParam,
+	conversation,
 }: MessageListWrapperProps) {
-	const { user } = useAuth();
-	const { messages, setConversation, isNewChat, setIsNewChat } = useChat();
+	const { messages, setConversation } = useChat();
 	const router = useRouter();
 	// 2. Use the 'enabled' option to conditionally fire the query.
 	//    The query will not run until 'user' exists.
@@ -68,30 +68,15 @@ const MessageListWrapper = memo(function MessageListWrapper({
 	useEffect(() => {
 		if (!isSuccess) return;
 
-		const title = fetchedMessages.length > 0 ? "notSet" : "New Conversation";
-		setConversation((prev) =>
-			!prev
-				? { id: conversationId, title }
-				: { ...prev, id: conversationId, title }
-		);
-
-		// Set new chat state based on parameter and message count
-		setIsNewChat(newChatParam && fetchedMessages.length === 0);
+		const title = conversation.title;
+		setConversation({ id: conversationId, title });
 	}, [
 		isSuccess,
 		fetchedMessages.length,
 		conversationId,
-		newChatParam,
+		conversation,
 		setConversation,
-		setIsNewChat,
 	]);
-
-	useEffect(() => {
-		if (isSuccess && fetchedMessages.length === 0 && !newChatParam) {
-			toast.error(`There's no Conversation with ID: ${conversationId}`);
-			router.push("/agent");
-		}
-	}, [isSuccess, fetchedMessages.length, newChatParam, conversationId]);
 
 	if (isLoading) {
 		return <Loader size="lg" />;

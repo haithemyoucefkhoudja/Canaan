@@ -1,32 +1,28 @@
 import { AppLinks } from "../app-links";
+import HeroAreaLinks from "../hero-area-links";
+import AnimatedText from "./animated-text";
 
 interface HomeSidebarProps {
-	collections: any[];
+	games: any[];
 }
 
-export function HomeSidebar({ collections }: HomeSidebarProps) {
+export function HomeSidebar({ games }: HomeSidebarProps) {
 	return (
-		<aside className="max-md:hidden col-span-4 h-screen sticky top-0 p-sides pt-top-spacing flex flex-col justify-between">
+		<aside className="max-md:hidden col-span-4 h-screen sticky top-0 p-sides pt-top-spacing flex flex-col justify-between flex-1">
 			<div className="space-y-6">
 				<div className="space-y-4">
-					<h1 className="text-lg font-bold tracking-tight text-foreground">
+					<h1 className="text-3xl font-bold  text-foreground">
 						Khazal Al-Majidi
 					</h1>
 
 					<div className="space-y-3 text-base leading-relaxed">
-						<blockquote className="relative pl-4 border-l-2 border-primary/30">
-							<p className="font-medium text-foreground italic">
-								"Occupying history is more dangerous than occupying land. All
-								knowledge is in favor of Palestine and its frank archaeological
-								history."
-							</p>
-						</blockquote>
+						<AnimatedText />
 					</div>
 				</div>
 			</div>
 
 			<div className="flex-1 mt-12 mb-8">
-				<AppLinks collections={collections} />
+				<HeroAreaLinks games={games} />
 			</div>
 		</aside>
 	);

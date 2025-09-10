@@ -23,7 +23,6 @@ import {
 	List,
 	ListOrdered,
 	Quote,
-	Code,
 	Undo,
 	Redo,
 	ImageIcon,
@@ -35,8 +34,9 @@ import {
 	Trash2,
 	Plus,
 	Minus,
+	Clipboard,
 } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
 	DropdownMenu,
@@ -50,7 +50,6 @@ import { ListScrollArea } from "../ui/list-scroll-area";
 interface RichTextEditorProps {
 	content: string;
 	onChange: (content: string) => void;
-	onAiComplete?: () => void;
 	onAiEnhance?: () => void;
 	isAiLoading?: boolean;
 	placeholder?: string;
@@ -59,7 +58,6 @@ interface RichTextEditorProps {
 export function RichTextEditor({
 	content,
 	onChange,
-	onAiComplete,
 	onAiEnhance,
 	isAiLoading = false,
 	placeholder = "Start writing your note...",
@@ -144,7 +142,30 @@ export function RichTextEditor({
 			},
 		},
 	});
+	// --- ADD THIS EFFECT TO SOLVE THE PROBLEM ---
+	useEffect(() => {
+		// If the editor or content is not ready, do nothing.
+		if (!editor) {
+			return;
+		}
 
+		// Get the current content of the editor.
+		const editorContent = editor.getHTML();
+
+		// Compare the prop content with the editor's content.
+		// If they are the same, we don't need to do anything.
+		// This check is CRUCIAL to prevent an infinite loop.
+		const isSame = editorContent === content;
+
+		if (isSame) {
+			return;
+		}
+
+		// If the content is different, update the editor.
+		// The second argument `false` prevents the `onUpdate` callback from firing,
+		// which also helps prevent an infinite loop.
+		editor.commands.setContent(content);
+	}, [content, editor]); // Rerun this effect whenever the content prop or the editor instance changes
 	const addImage = useCallback(() => {
 		fileInputRef.current?.click();
 	}, []);
@@ -215,13 +236,6 @@ export function RichTextEditor({
 			label: "Strikethrough",
 			shortcut: "⌘⇧X",
 		},
-		{
-			icon: Code,
-			action: () => editor.chain().focus().toggleCode().run(),
-			isActive: editor.isActive("code"),
-			label: "Code",
-			shortcut: "⌘E",
-		},
 	];
 
 	const listButtons = [
@@ -246,7 +260,7 @@ export function RichTextEditor({
 	];
 
 	return (
-		<div className="flex flex-col h-full bg-background">
+		<div className="flex flex-col h-full bg-background border-border border-2">
 			{/* Custom Styles for Lists and Tables */}
 			<style>{`
         .tiptap-bullet-list {
@@ -312,26 +326,37 @@ export function RichTextEditor({
 					{/* Left Side - AI Tools */}
 					<div className="flex items-center gap-3">
 						<Button
-							onClick={onAiComplete}
+							type="button"
+							onClick={async () => {
+								try {
+									const text = await navigator.clipboard.readText();
+									// Use insertContent to paste the text at the current cursor position
+									editor.chain().focus().insertContent(text).run();
+								} catch (err) {
+									console.error("Failed to read clipboard contents: ", err);
+									// Optional: Display a user-friendly error message
+									alert(
+										"Could not paste from clipboard. Please allow clipboard access in your browser settings."
+									);
+								}
+							}}
 							disabled={isAiLoading}
-							className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:from-blue-600 hover:via-blue-700 hover:to-blue-800 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+							className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+							variant="outline"
 						>
-							<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-							<Sparkles className="h-4 w-4 mr-2 relative z-10" />
-							<span className="relative z-10">
-								{isAiLoading ? "Completing..." : "✨ Complete"}
-							</span>
+							<Clipboard className="h-4 w-4 mr-2 relative z-10" />
+							<span className="relative z-10">Paste Tiptap Text</span>
 						</Button>
-
 						<Button
+							type="button"
 							onClick={onAiEnhance}
 							disabled={isAiLoading}
-							className="relative overflow-hidden bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:from-purple-600 hover:via-purple-700 hover:to-purple-800 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+							className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
 						>
 							<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 							<Sparkles className="h-4 w-4 mr-2 relative z-10" />
 							<span className="relative z-10">
-								{isAiLoading ? "Enhancing..." : "🚀 Enhance"}
+								{isAiLoading ? "Enhancing..." : "Enhance"}
 							</span>
 						</Button>
 					</div>
@@ -339,6 +364,7 @@ export function RichTextEditor({
 					{/* Right Side - History */}
 					<div className="flex items-center gap-1">
 						<Button
+							type="button"
 							variant="ghost"
 							size="sm"
 							onClick={() => editor.chain().focus().undo().run()}
@@ -348,6 +374,7 @@ export function RichTextEditor({
 							<Undo className="h-4 w-4" />
 						</Button>
 						<Button
+							type="button"
 							variant="ghost"
 							size="sm"
 							onClick={() => editor.chain().focus().redo().run()}
@@ -365,6 +392,7 @@ export function RichTextEditor({
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
+								type="button"
 								variant="outline"
 								className="min-w-[140px] justify-between font-medium bg-transparent"
 							>
@@ -424,6 +452,7 @@ export function RichTextEditor({
 					<div className="flex items-center ">
 						{formatButtons.map((button, index) => (
 							<Button
+								type="button"
 								key={index}
 								variant="ghost"
 								size="sm"
@@ -446,6 +475,7 @@ export function RichTextEditor({
 					<div className="flex items-center ">
 						{listButtons.map((button, index) => (
 							<Button
+								type="button"
 								key={index}
 								variant="ghost"
 								size="sm"
@@ -467,8 +497,10 @@ export function RichTextEditor({
 					{/* Media & Tools */}
 					<div className="flex items-center gap-1 ">
 						<Button
+							type="button"
 							variant="ghost"
 							size="sm"
+							disabled
 							onClick={addImage}
 							className="h-9 w-9 p-0 hover:bg-accent transition-colors"
 							title="Add Image"
@@ -476,6 +508,7 @@ export function RichTextEditor({
 							<ImageIcon className="h-4 w-4" />
 						</Button>
 						<Button
+							type="button"
 							variant="ghost"
 							size="sm"
 							onClick={addLink}
@@ -492,6 +525,7 @@ export function RichTextEditor({
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button
+									type="button"
 									variant="ghost"
 									size="sm"
 									className="h-9 w-9 p-0 hover:bg-accent transition-colors"
@@ -596,6 +630,7 @@ export function RichTextEditor({
 							/>
 						</div>
 						<Button
+							type="button"
 							variant="ghost"
 							size="sm"
 							onClick={() => editor.chain().focus().toggleHighlight().run()}

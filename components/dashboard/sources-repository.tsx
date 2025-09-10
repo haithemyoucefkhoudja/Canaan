@@ -84,6 +84,7 @@ import {
 import { toast } from "sonner";
 import { Source } from "@prisma/client";
 import React from "react";
+import { format } from "date-fns";
 
 export default function SourceEmbedding({
 	activeSource,
@@ -159,23 +160,6 @@ export default function SourceEmbedding({
 		});
 	};
 
-	const handleStartEmbedding = (source: Source, content: string) => {
-		const metadata = {
-			sourceName: source.title,
-			size: content.length,
-			author: source.author,
-			publish_date: source.publish_date || null,
-			type: source.type,
-			url: source.url,
-			created_at: source.created_at,
-		};
-
-		embeddingMutation.mutate({
-			sourceId: source.id,
-			content: content,
-			metadata,
-		});
-	};
 	return (
 		// We wrap everything in the Form provider from shadcn/ui
 		<Form {...form}>
@@ -397,7 +381,7 @@ export function SourcesRepository() {
 			queryClient.invalidateQueries({ queryKey: ["sources"] });
 			toast.success("Source created successfully");
 			setIsUploadDialogOpen(false);
-			form.reset();
+			form.reset({});
 			setSelectedSource(null);
 		},
 		onError: (error) => {
@@ -413,7 +397,7 @@ export function SourcesRepository() {
 			queryClient.invalidateQueries({ queryKey: ["sources"] });
 			toast.success("Source updated successfully");
 			setIsUploadDialogOpen(false);
-			form.reset();
+			form.reset({});
 			setSelectedSource(null);
 		},
 		onError: (error) => {
@@ -450,8 +434,9 @@ export function SourcesRepository() {
 			type: source.type as any,
 			url: source.url || "",
 			publish_date: source.publish_date
-				? new Date(source.publish_date)
-				: undefined,
+				? format(new Date(source.publish_date), "yyyy-MM-dd")
+				: "",
+
 			description: source.description || "",
 		});
 		setIsUploadDialogOpen(true);
@@ -495,7 +480,6 @@ export function SourcesRepository() {
 		return sourceTypes.find((st) => st.value === type) || sourceTypes[0];
 	};
 
-	console.log("🚀 ~ getSourceStats ~ sources:", sources);
 	const getSourceStats = () => {
 		const stats = {
 			total: sources.length,
@@ -578,10 +562,7 @@ export function SourcesRepository() {
 					</CardContent>
 				</Card>
 				{sourceTypes.slice(0, 4).map((type) => {
-					console.log("🚀 ~ type:", type);
 					const count = stats[type.value as keyof typeof stats] as number;
-					console.log("🚀 ~ stats:", stats);
-					console.log("🚀 ~ count:", count);
 					const Icon = type.icon;
 					return (
 						<Card key={type.value} className="bg-card">
@@ -614,7 +595,11 @@ export function SourcesRepository() {
 						<div className="flex items-center gap-2">
 							<Dialog
 								open={isUploadDialogOpen}
-								onOpenChange={setIsUploadDialogOpen}
+								onOpenChange={(open) => {
+									form.reset({});
+									setSelectedSource(null);
+									setIsUploadDialogOpen(open);
+								}}
 							>
 								<DialogTrigger asChild>
 									<Button className="gap-2">
@@ -727,22 +712,7 @@ export function SourcesRepository() {
 														<FormItem>
 															<FormLabel>Publish Date (Optional)</FormLabel>
 															<FormControl>
-																<Input
-																	type="date"
-																	{...field}
-																	value={
-																		field.value
-																			? field.value.toISOString().split("T")[0]
-																			: ""
-																	}
-																	onChange={(e) =>
-																		field.onChange(
-																			e.target.value
-																				? new Date(e.target.value)
-																				: undefined
-																		)
-																	}
-																/>
+																<Input type="date" {...field} />
 															</FormControl>
 															<FormMessage />
 														</FormItem>
@@ -773,7 +743,7 @@ export function SourcesRepository() {
 													variant="outline"
 													onClick={() => {
 														setIsUploadDialogOpen(false);
-														form.reset();
+														form.reset({});
 														setSelectedSource(null);
 													}}
 												>
