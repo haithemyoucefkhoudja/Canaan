@@ -96,6 +96,22 @@ export function RewardBoxForm({ rewardBox, onFinished }: RewardBoxFormProps) {
 					/>
 					<FormField
 						control={form.control}
+						name="icon"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Icon URL</FormLabel>
+								<FormControl>
+									<Input
+										placeholder="https://example.com/icon.png"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
 						name="type"
 						render={({ field }) => (
 							<FormItem>

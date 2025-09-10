@@ -22,7 +22,7 @@ model Event {
   target_events  EventRelationship[] @relation("TargetEvent")
   location_links LocationLink[]
   media_assets   MediaAsset[]
-  quizzes        Quiz[]
+  game        Game[]
   source_links   SourceLink[]
 
   @@map("event")
@@ -57,10 +57,11 @@ model MediaAsset {
   @@map("media_asset")
 }
 
-model Quiz {
+model Game {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   event_id   String   @db.Uuid
-  quiz_graph Json
+  type       String
+  game Json
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
   event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
