@@ -85,6 +85,7 @@ async function* streamSearchResponse(
 	try {
 		for await (const event of on(emitter, "data") as any) {
 			const parsedData = JSON.parse(event);
+			console.log("🚀 ~ streamSearchResponse ~ parsedData:", parsedData);
 			if (parsedData.type === "end") {
 				yield { type: "end", message, sources };
 				break;
@@ -110,6 +111,7 @@ async function* streamSearchResponse(
 		console.log("End stream");
 		yield { type: "end", message, sources };
 	} catch (error) {
+		console.log("🚀 ~ streamSearchResponse ~ error:", error);
 		yield {
 			type: "error",
 			error: error instanceof Error ? error.message : "Unknown error",
@@ -117,6 +119,7 @@ async function* streamSearchResponse(
 	}
 }
 export interface ChatRequestBody {
+	signal?: AbortSignal;
 	task: THandlersKeys;
 	query: MessageContentText[];
 	history: Array<[string, any]>;

@@ -18,7 +18,7 @@ export const sourceSchema = z.object({
 	]),
 	url: z.string().url("Must be a valid URL"),
 	publish_date: z.string().optional(),
-	description: z.string(),
+	content: z.string().min(100, "At least content has to be 100 character"),
 });
 export const sourceContentEmbeddingSchema = z.object({
 	content: z.string().min(100, "At least content has to be 100 character"),

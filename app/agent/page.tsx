@@ -8,5 +8,5 @@ export default async function HomePage({
 }) {
 	const agentIdNotFound =
 		typeof searchParams.notFound == "string" ? searchParams.notFound : "";
-	return <WelcomePage agentIdNotFound={agentIdNotFound} />;
+	return <WelcomePage agentIdNotFound={agentIdNotFound}></WelcomePage>;
 }

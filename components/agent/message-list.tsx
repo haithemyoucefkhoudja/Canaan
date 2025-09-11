@@ -55,9 +55,6 @@ const MessageListWrapper = memo(function MessageListWrapper({
 	conversation,
 }: MessageListWrapperProps) {
 	const { messages, setConversation } = useChat();
-	const router = useRouter();
-	// 2. Use the 'enabled' option to conditionally fire the query.
-	//    The query will not run until 'user' exists.
 	const {
 		data: fetchedMessages = [], // Use a better name and provide a default
 		isLoading,
@@ -88,10 +85,7 @@ const MessageListWrapper = memo(function MessageListWrapper({
 	// 5. If we reach this point, the query was successful and fetchedMessages are available.
 	// However, the component might still render for a frame before the redirect happens.
 	// To prevent a flicker, we can add a final check.
-	if (
-		(!fetchedMessages || fetchedMessages.length === 0) &&
-		messages.length == 0
-	) {
+	if (!fetchedMessages) {
 		// Render a loader or null while the redirect is happening.
 		return <Loader size="lg" />;
 	}

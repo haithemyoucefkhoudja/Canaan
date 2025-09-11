@@ -45,12 +45,7 @@ export async function POST(request: Request) {
 		}
 
 		// 2. Trigger the Embedding Process with the provided data
-		const chunksCreated = await createEmbeddingsWithLangChain(
-			supabase,
-			sourceId,
-			content,
-			metadata
-		);
+		await createEmbeddingsWithLangChain(supabase, sourceId, content, metadata);
 
 		// 3. Update the original source's `isEmbedded` flag on success
 		// This is the only interaction with the `sources` table.

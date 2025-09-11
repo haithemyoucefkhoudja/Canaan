@@ -1,10 +1,10 @@
 import {
-	academicSearchResponsePrompt,
-	academicSearchRetrieverPrompt,
-} from "./academicSearch";
+	databaseSearchRetrieverPrompt,
+	databaseSearchResponsePrompt,
+} from "./databaseSearch";
 import { titleGeneratorResponsePrompt } from "./titleGenerator";
 export default {
-	academicSearchResponsePrompt,
-	academicSearchRetrieverPrompt,
+	databaseSearchRetrieverPrompt,
+	databaseSearchResponsePrompt,
 	titleGeneratorResponsePrompt,
 };

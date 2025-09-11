@@ -3,21 +3,19 @@ import prompts from "./prompts";
 
 export const Handlers = {
 	academicSearch: new MetaAgent({
-		activeEngines: ["arxiv", "google scholar", "pubmed"],
-		queryGeneratorPrompt: prompts.academicSearchRetrieverPrompt,
-		responsePrompt: prompts.academicSearchResponsePrompt,
-		rerank: true,
-		rerankThreshold: 0,
-		searchWeb: true,
+		activeEngines: [],
+		queryGeneratorPrompt: prompts.databaseSearchRetrieverPrompt,
+		responsePrompt: prompts.databaseSearchResponsePrompt,
+
+		searchDocuments: true,
 		summarizer: false,
 	}),
 	titleGenerator: new MetaAgent({
 		activeEngines: ["title"],
 		queryGeneratorPrompt: "",
 		responsePrompt: prompts.titleGeneratorResponsePrompt,
-		rerank: false,
-		rerankThreshold: 0,
-		searchWeb: false,
+
+		searchDocuments: false,
 		summarizer: false,
 	}),
 };

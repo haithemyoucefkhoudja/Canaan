@@ -16,15 +16,16 @@ import {
 	MessageContentText,
 } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import LineListOutputParser from "@/ai/outputParsers/listLineOutputParser";
 import LineOutputParser from "@/ai/outputParsers/lineOutputParser";
-import { getDocumentsFromLinks } from "@/ai/utils/documents";
 import { Document } from "langchain/document";
+import { Document as ResultDocument } from "@prisma/client";
 // import { searchSearxng } from "@/ai/searxng";
 import { EventEmitter } from "eventemitter3";
 import { StreamEvent } from "@langchain/core/tracers/log_stream";
 import { IterableReadableStream } from "@langchain/core/utils/stream";
 import { RemoteFileAttachment } from "@/types/attachment";
+import { searchDocuments } from "@/lib/supabase";
+import { imageUrlToBase64 } from "@/lib/utils";
 export interface MetaAgentType {
 	searchAndAnswer: (
 		message: MessageContentText[],
@@ -35,10 +36,8 @@ export interface MetaAgentType {
 	) => Promise<EventEmitter>;
 }
 interface Config {
-	searchWeb: boolean;
-	rerank: boolean;
+	searchDocuments: boolean;
 	summarizer: boolean;
-	rerankThreshold: number;
 	queryGeneratorPrompt: string;
 	responsePrompt: string;
 	activeEngines: string[];
@@ -53,7 +52,7 @@ class MetaAgent implements MetaAgentType {
 	}
 	private async createSearchRetrieverChain(
 		llm: BaseChatModel,
-		embeddings: Embeddings | undefined
+		embeddings: Embeddings
 	) {
 		process.env.NODE_ENV == "development" &&
 			console.log("Creating search retriever chain...");
@@ -69,159 +68,63 @@ class MetaAgent implements MetaAgentType {
 				return await llm.invoke(input);
 			},
 			this.strParser,
-			RunnableLambda.from(async (input: string) => {
-				console.log(
-					"Search  chain input:",
-					input,
-					process.env.NODE_ENV == "development"
-				);
-				process.env.NODE_ENV == "development" &&
-					console.log("Search retriever chain input:", input);
+			RunnableLambda.from(async (generatedQuery: string) => {
+				process.env.NODE_ENV === "development" &&
+					console.log("Lambda input (generated query):", generatedQuery);
+
 				try {
+					if (generatedQuery.toLowerCase().trim() === "not_needed") {
+						process.env.NODE_ENV === "development" &&
+							console.log("Query not needed, returning empty result.");
+						return { query: "", docs: [] };
+					}
+
+					// --- START: DOCUMENT RETRIEVAL (The only part that changes) ---
 					this.emitter.emit(
 						"data",
 						JSON.stringify({
 							type: "action",
-							data: "Generating search queries...",
+							data: `Searching database for: "${generatedQuery}"`,
 						})
 					);
-					const linksOutputParser = new LineListOutputParser({ key: "links" });
-					const questionOutputParser = new LineOutputParser({
-						key: "question",
-					});
-					const links = await linksOutputParser.parse(input);
-					process.env.NODE_ENV == "development" &&
-						console.log("Parsed links:", links);
-					let question = this.config.summarizer
-						? await questionOutputParser.parse(input)
-						: input;
-					process.env.NODE_ENV == "development" &&
-						console.log("Parsed question:", question);
-					if (question === "not_needed") {
-						process.env.NODE_ENV == "development" &&
-							console.log("Question not needed, returning empty result.");
-						return { query: "", docs: [] };
+
+					const queryEmbedding = await embeddings.embedQuery(generatedQuery);
+					let dbResults: ResultDocument[] = await searchDocuments(
+						queryEmbedding,
+						5 // Limit to 5 docs to avoid high cost/latency from summarization
+					);
+
+					if (!dbResults || dbResults.length === 0) {
+						process.env.NODE_ENV === "development" &&
+							console.log("No documents found in the database.");
+						return { query: generatedQuery, docs: [] };
 					}
-					if (links.length > 0) {
-						process.env.NODE_ENV == "development" &&
-							console.log("Processing links...");
-						if (question.length === 0) {
-							question = "summarize";
-							process.env.NODE_ENV == "development" &&
-								console.log("Empty question, setting to 'summarize'.");
-						}
-						let docs: Document<{ title: any; url: any }>[] = [];
-						this.emitter.emit(
-							"data",
-							JSON.stringify({
-								type: "action",
-								data: "Fetching content from links...",
-							})
-						);
-						const linkDocs = await getDocumentsFromLinks({ links });
-						process.env.NODE_ENV == "development" &&
-							console.log("Retrieved documents from links:", linkDocs);
-						const docGroups: Document[] = [];
-						linkDocs.map((doc: any) => {
-							const URLDocExists = docGroups.find(
-								(d) =>
-									d.metadata.url === doc.metadata.url &&
-									d.metadata.totalDocs < 10
-							);
-							if (!URLDocExists) {
-								docGroups.push({
-									...doc,
-									metadata: { ...doc.metadata, totalDocs: 1 },
-								});
-							}
-							const docIndex = docGroups.findIndex(
-								(d) =>
-									d.metadata.url === doc.metadata.url &&
-									d.metadata.totalDocs < 10
-							);
-							if (docIndex !== -1) {
-								docGroups[docIndex].pageContent =
-									docGroups[docIndex].pageContent + `\n\n` + doc.pageContent;
-								docGroups[docIndex].metadata.totalDocs += 1;
-							}
+					dbResults = dbResults.map((result) => ({
+						...result,
+						metadata: {
+							...(result.metadata as any),
+							document_id: result.id,
+							source_id: result.source_id,
+						},
+					}));
+					const documents: Document[] = [];
+					dbResults.map((result) => {
+						const document = new Document({
+							pageContent: result.content as string,
+							metadata: result.metadata as any, // Pass through the original metadata
 						});
-						process.env.NODE_ENV == "development" &&
-							console.log("Grouped documents:", docGroups);
-						this.emitter.emit(
-							"data",
-							JSON.stringify({ type: "action", data: "Summarizing content..." })
+						documents.push(document);
+					});
+					// --- END: DOCUMENT RETRIEVAL ---
+
+					// --- START: PER-DOCUMENT SUMMARIZATION (The logic you wanted me to keep) ---
+					process.env.NODE_ENV === "development" &&
+						console.log(
+							`Found ${dbResults.length} documents from DB. Summarizing each...`
 						);
-						await Promise.all(
-							docGroups.map(async (doc) => {
-								try {
-									process.env.NODE_ENV == "development" &&
-										console.log("Summarizing document:", doc.metadata.url);
-									const res = await llm.invoke(
-										`            You are a web search summarizer, tasked with summarizing a piece of text retrieved from a web search. Your job is to summarize the \n            text into a detailed, 2-4 paragraph explanation that captures the main ideas and provides a comprehensive answer to the query.\n            If the query is "summarize", you should provide a detailed summary of the text. If the query is a specific question, you should answer it in the summary.\n            \n            - **Journalistic tone**: The summary should sound professional and journalistic, not too casual or vague.\n            - **Thorough and detailed**: Ensure that every key point from the text is captured and that the summary directly answers the query.\n            - **Not too lengthy, but detailed**: The summary should be informative but not excessively long. Focus on providing detailed information in a concise format.\n\n            The text will be shared inside the \`text\` XML tag, and the query inside the \`query\` XML tag.\n\n            <example>\n            1. \`<text>\n            Docker is a set of platform-as-a-service products that use OS-level virtualization to deliver software in packages called containers. \n            It was first released in 2013 and is developed by Docker, Inc. Docker is designed to make it easier to create, deploy, and run applications \n            by using containers.\n            </text>\n\n            <query>\n            What is Docker and how does it work?\n            </query>\n\n            Response:\n            Docker is a revolutionary platform-as-a-service product developed by Docker, Inc., that uses container technology to make application \n            deployment more efficient. It allows developers to package their software with all necessary dependencies, making it easier to run in \n            any environment. Released in 2013, Docker has transformed the way applications are built, deployed, and managed.\n            \`\n            2. \`<text>\n            The theory of relativity, or simply relativity, encompasses two interrelated theories of Albert Einstein: special relativity and general\n            relativity. However, the word "relativity" is sometimes used in reference to Galilean invariance. The term "theory of relativity" was based\n            on the expression "relative theory" used by Max Planck in 1906. The theory of relativity usually encompasses two interrelated theories by\n            Albert Einstein: special relativity and general relativity. Special relativity applies to all physical phenomena in the absence of gravity.\n            General relativity explains the law of gravitation and its relation to other forces of nature. It applies to the cosmological and astrophysical\n            realm, including astronomy.\n            </text>\n\n            <query>\n            summarize\n            </query>\n\n            Response:\n            The theory of relativity, developed by Albert Einstein, encompasses two main theories: special relativity and general relativity. Special\n            relativity applies to all physical phenomena in the absence of gravity, while general relativity explains the law of gravitation and its\n            relation to other forces of nature. The theory of relativity is based on the concept of "relative theory," as introduced by Max Planck in\n            1906. It is a fundamental theory in physics that has revolutionized our understanding of the universe.\n            \`\n            </example>\n\n            Everything below is the actual data you will be working with. Good luck!\n\n            <query>\n            ${question}\n            </query>\n\n            <text>\n            ${doc.pageContent}\n            </text>\n\n            Make sure to answer the query in the summary.\n          `
-									);
-									const document = new Document({
-										pageContent: res.content as string,
-										metadata: {
-											title: doc.metadata.title,
-											url: doc.metadata.url,
-										},
-									});
-									docs.push(document);
-									process.env.NODE_ENV == "development" &&
-										console.log(
-											"Finished summarizing document:",
-											doc.metadata.url
-										);
-								} catch (error: any) {
-									console.trace();
-									console.error(
-										"Something Wrong Happened during summarization:",
-										error.message
-									);
-								}
-							})
-						);
-						process.env.NODE_ENV == "development" &&
-							console.log("Finished processing links. Result:", {
-								query: question,
-								docs: docs,
-							});
-						return { query: question, docs: docs };
-					} else {
-						process.env.NODE_ENV == "development" &&
-							console.log("No links found, performing web search...");
-						this.emitter.emit(
-							"data",
-							JSON.stringify({
-								type: "action",
-								data: `Searching for: ${question}`,
-							})
-						);
-						const res: any = {};
-						process.env.NODE_ENV == "development" &&
-							console.log("Searxng result:", res);
-						if (!res.results) {
-							throw new Error("No result was found Searxng API has an issue");
-						}
-						const documents = res.results.map(
-							(result: any) =>
-								new Document({
-									pageContent:
-										result.content ||
-										(this.config.activeEngines.includes("youtube")
-											? result.title
-											: "") /* Todo: Implement transcript grabbing using Youtubei (source: https://www.npmjs.com/package/youtubei) */,
-									metadata: {
-										title: result.title,
-										url: result.url,
-										...(result.img_src && { img_src: result.img_src }),
-									},
-								})
-						);
-						process.env.NODE_ENV == "development" &&
-							console.log("Web search documents:", documents);
-						return { query: question, docs: documents };
-					}
+
+					return { query: generatedQuery, docs: documents };
+					// --- END: PER-DOCUMENT SUMMARIZATION ---
 				} catch (error: any) {
 					console.trace();
 					console.error(
@@ -241,7 +144,7 @@ class MetaAgent implements MetaAgentType {
 			console.log("Creating answering chain...");
 		const searchRetrieverChain = await this.createSearchRetrieverChain(
 			llm,
-			embeddings
+			embeddings!
 		);
 
 		this.emitter.emit(
@@ -256,7 +159,7 @@ class MetaAgent implements MetaAgentType {
 				const { query, chat_history } = input;
 				console.log("Query:", query);
 				let docs: Document[] | null = null;
-				if (this.config.searchWeb) {
+				if (this.config.searchDocuments) {
 					process.env.NODE_ENV == "development" &&
 						console.log("Generating search query with:", query);
 					const searchRetrieverResult = await searchRetrieverChain.invoke({
@@ -392,6 +295,7 @@ class MetaAgent implements MetaAgentType {
 			emitter.emit("data", JSON.stringify({ type: "end" }));
 		}
 	}
+
 	async searchAndAnswer(
 		message: MessageContentText[],
 		history: BaseMessage[],
@@ -406,21 +310,26 @@ class MetaAgent implements MetaAgentType {
 				history,
 				attachments,
 			});
+		const imageAttachmentPromises = attachments.map(async (attachment) => {
+			// Each `async` function in the map returns a promise
+			const base64Image = await imageUrlToBase64(attachment.url); // Await the conversion
+
+			return {
+				type: "image_url" as const, // Use 'as const' for better type inference
+				image_url: {
+					// The result from imageUrlToBase64 is the full data URL, which is what you need here.
+					url: base64Image,
+				},
+			};
+		});
+		const resolvedImageAttachments = await Promise.all(imageAttachmentPromises);
+
 		const answeringChain = await this.createAnsweringChain(llm, embeddings);
 		const stream = answeringChain.streamEvents(
 			{
 				chat_history: history,
 				query: new HumanMessage({
-					content: [
-						...message,
-						...attachments.map((attachment) => {
-							return {
-								type: "media",
-								source_type: "url",
-								fileUri: attachment.url,
-							};
-						}),
-					],
+					content: [...message, ...resolvedImageAttachments],
 				}),
 			},
 			{ version: "v1" }

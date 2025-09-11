@@ -8,7 +8,7 @@ import { SidebarTrigger } from "../ui/sidebar";
 function AgentHeader() {
 	return (
 		<header className="flex items-center gap-2 justify-end px-2 py-3 border-b">
-			<SidebarTrigger className="mr-auto" />
+			<SidebarTrigger sidebarId="main" className="mr-auto" />
 			<VoiceIndicator />
 			{/* Theme Switcher */}
 			<ThemeIndicator />

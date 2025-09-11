@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronRight, GalleryVerticalEnd } from "lucide-react";
+import { ChevronRight, GalleryVerticalEnd, MessageSquare } from "lucide-react";
 
 import {
 	Sidebar,
@@ -26,144 +26,10 @@ import { ConversationList } from "./conversation-list";
 const data = {
 	navMain: [
 		{
-			title: "Getting Started",
-			url: "#",
-			isActive: false,
-			items: [
-				{
-					title: "Installation",
-					url: "#",
-				},
-				{
-					title: "Project Structure",
-					url: "#",
-				},
-			],
-		},
-		{
-			title: "Building Your Application",
-			url: "#",
-			isActive: false,
-			items: [
-				{
-					title: "Routing",
-					url: "#",
-				},
-				{
-					title: "Data Fetching",
-					url: "#",
-					isActive: true,
-				},
-				{
-					title: "Rendering",
-					url: "#",
-				},
-				{
-					title: "Caching",
-					url: "#",
-				},
-				{
-					title: "Styling",
-					url: "#",
-				},
-				{
-					title: "Optimizing",
-					url: "#",
-				},
-				{
-					title: "Configuring",
-					url: "#",
-				},
-				{
-					title: "Testing",
-					url: "#",
-				},
-				{
-					title: "Authentication",
-					url: "#",
-				},
-				{
-					title: "Deploying",
-					url: "#",
-				},
-				{
-					title: "Upgrading",
-					url: "#",
-				},
-				{
-					title: "Examples",
-					url: "#",
-				},
-			],
-		},
-		{
-			isActive: false,
-			title: "API Reference",
-			url: "#",
-			items: [
-				{
-					title: "Components",
-					url: "#",
-				},
-				{
-					title: "File Conventions",
-					url: "#",
-				},
-				{
-					title: "Functions",
-					url: "#",
-				},
-				{
-					title: "next.config.js Options",
-					url: "#",
-				},
-				{
-					title: "CLI",
-					url: "#",
-				},
-				{
-					title: "Edge Runtime",
-					url: "#",
-				},
-			],
-		},
-		{
-			isActive: false,
-			title: "Architecture",
-			url: "#",
-			items: [
-				{
-					title: "Accessibility",
-					url: "#",
-				},
-				{
-					title: "Fast Refresh",
-					url: "#",
-				},
-				{
-					title: "Next.js Compiler",
-					url: "#",
-				},
-				{
-					title: "Supported Browsers",
-					url: "#",
-				},
-				{
-					title: "Turbopack",
-					url: "#",
-				},
-			],
-		},
-		{
-			isActive: false,
-			title: "Community",
-			url: "#",
-			items: [
-				{
-					title: "Contribution Guide",
-					url: "#",
-				},
-			],
+			title: "Chat List",
+			icon: () => <MessageSquare />,
+			isActive: true,
+			component: () => <ConversationList />,
 		},
 	],
 };
@@ -175,7 +41,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" asChild>
-							<a href="/">
+							<a href="/agent">
 								<div className="flex aspect-square size-8 items-center justify-center rounded-lg  ">
 									<Image
 										src="/olive-branch.png"
@@ -192,10 +58,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
-			<SidebarContent>
-				<SidebarGroup>
+			<SidebarContent className="h-full flex flex-col">
+				{" "}
+				{/* <-- Add flex flex-col */}
+				<SidebarGroup className="h-full flex flex-col flex-1">
+					{" "}
+					{/* <-- Add flex flex-col */}
 					<SidebarGroupLabel>Platform</SidebarGroupLabel>
-					<SidebarMenu>
+					{/* This menu needs to be a flex container that allows its children to grow */}
+					<SidebarMenu className="h-full flex flex-col flex-1">
+						{" "}
+						{/* <-- Add flex flex-col and flex-1 */}
 						{data.navMain.map((item) => (
 							<Collapsible
 								key={item.title}
@@ -206,12 +79,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								<SidebarMenuItem>
 									<CollapsibleTrigger asChild>
 										<SidebarMenuButton tooltip={item.title}>
+											{item.icon()}
 											<span>{item.title}</span>
 											<ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
 										</SidebarMenuButton>
 									</CollapsibleTrigger>
 									<CollapsibleContent>
-										<SidebarMenuSub>
+										<SidebarMenuSub className="h-full border-l-0 mx-0">
 											{/* {item.items?.map((subItem) => (
 												<SidebarMenuSubItem key={subItem.title}>
 													<SidebarMenuSubButton asChild>
@@ -221,7 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 													</SidebarMenuSubButton>
 												</SidebarMenuSubItem>
 											))} */}
-											<ConversationList />
+											{item.component()}
 										</SidebarMenuSub>
 									</CollapsibleContent>
 								</SidebarMenuItem>

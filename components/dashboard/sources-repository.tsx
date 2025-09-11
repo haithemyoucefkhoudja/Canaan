@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
 	useQuery,
 	useMutation,
@@ -75,20 +75,17 @@ import {
 	createDocumentEmbedding,
 	EmbedApiResponse,
 } from "@/lib/supabase";
-import {
-	sourceSchema,
-	type SourceFormData,
-	sourceContentEmbedding,
-	sourceContentEmbeddingSchema,
-} from "@/lib/validations/source";
+import { sourceSchema, type SourceFormData } from "@/lib/validations/source";
 import { toast } from "sonner";
 import { Source } from "@prisma/client";
 import React from "react";
 import { format } from "date-fns";
+import { MarkdownMessageLazyLoader } from "../ui/react-markdown";
 
 export default function SourceEmbedding({
 	activeSource,
 	mutationFn,
+	onCancel,
 }: {
 	activeSource: Source | null;
 	mutationFn: (
@@ -103,12 +100,10 @@ export default function SourceEmbedding({
 			unknown
 		>
 	) => void;
+	onCancel: () => void;
 }) {
 	if (!activeSource) return null;
-	const form = useForm<sourceContentEmbedding>({
-		resolver: zodResolver(sourceContentEmbeddingSchema),
-		defaultValues: { content: "No Content" },
-	});
+
 	const queryClient = useQueryClient();
 
 	const embeddingMutation = useMutation({
@@ -124,7 +119,6 @@ export default function SourceEmbedding({
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["sources"] });
 			toast.success("Embedding process started");
-			form.reset({ content: "" }); // Reset the form after successful submission
 		},
 		onError: (error) => {
 			toast.error("Failed to start embedding process");
@@ -135,15 +129,9 @@ export default function SourceEmbedding({
 	useEffect(() => {
 		mutationFn(embeddingMutation);
 	}, [embeddingMutation.isPending]);
-	const handleCancel = () => {
-		// Reset the form state, clearing the file input and textarea
-		form.reset({ content: "" });
-	};
-	// This function is now called by the form's onSubmit handler
-	const onFormSubmit = (values: sourceContentEmbedding) => {
-		// The `values` object contains the validated form data
-		const { content } = values;
 
+	// This function is now called by the form's onSubmit handler
+	const onFormSubmit = () => {
 		const metadata = {
 			sourceName: activeSource.title,
 			author: activeSource.author,
@@ -155,129 +143,34 @@ export default function SourceEmbedding({
 
 		embeddingMutation.mutate({
 			sourceId: activeSource.id,
-			content: content,
+			content: activeSource.content,
 			metadata,
 		});
 	};
 
 	return (
-		// We wrap everything in the Form provider from shadcn/ui
-		<Form {...form}>
-			<form
-				onSubmit={form.handleSubmit(onFormSubmit)}
-				className="space-y-4 w-full"
-			>
-				<FormField
-					control={form.control}
-					name="content"
-					render={({ field }) => {
-						const [fileName, setFileName] = useState<string | null>(null);
-
-						// We need to sync the file name state when the form is reset
-						if (field.value === "") {
-							if (fileName !== null) setFileName(null);
-						}
-
-						const handleFileChange = (
-							event: React.ChangeEvent<HTMLInputElement>
-						) => {
-							const file = event.target.files?.[0];
-							if (!file) {
-								setFileName(null);
-								field.onChange("");
-								return;
-							}
-							if (file.type !== "text/markdown" && !file.name.endsWith(".md")) {
-								form.setError("content", {
-									type: "manual",
-									message: "Please upload a valid .md file.",
-								});
-								setFileName(null);
-								field.onChange("");
-								return;
-							}
-							setFileName(file.name);
-							const reader = new FileReader();
-							reader.onload = (e) => {
-								const text = e.target?.result as string;
-								field.onChange(text); // Set the value for validation and submission
-							};
-							reader.onerror = () => {
-								form.setError("content", {
-									type: "manual",
-									message: "Failed to read the file.",
-								});
-								setFileName(null);
-								field.onChange("");
-							};
-							reader.readAsText(file);
-						};
-
-						return (
-							<FormItem>
-								<FormLabel>Content (from .md file)</FormLabel>
-								<FormControl>
-									<div className="flex flex-col gap-2">
-										<Input
-											id="content-file-upload"
-											type="file"
-											accept=".md,text/markdown"
-											onChange={handleFileChange}
-											className="sr-only"
-											ref={field.ref}
-										/>
-										<label
-											htmlFor="content-file-upload"
-											className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-10 px-4 py-2 cursor-pointer"
-										>
-											{fileName ? "Change File" : "Upload .md File"}
-										</label>
-										{fileName && (
-											<p className="text-sm text-muted-foreground">
-												Selected file: {fileName}
-											</p>
-										)}
-									</div>
-								</FormControl>
-								<FormMessage />
-
-								{field.value &&
-									typeof field.value === "string" &&
-									field.value.length > 0 && (
-										<Textarea
-											readOnly
-											value={field.value}
-											placeholder="Content from uploaded file..."
-											rows={10}
-											className="mt-2 font-mono text-sm"
-										/>
-									)}
-							</FormItem>
-						);
-					}}
-				/>
-
-				{/* --- ACTION BUTTONS WRAPPER --- */}
-				{/* Only show buttons if there is valid content */}
-				{form.watch("content") && form.formState.isValid && (
-					<div className="flex justify-end gap-2 pt-2">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={handleCancel}
-							disabled={embeddingMutation.isPending}
-						>
-							Cancel
-						</Button>
-						<Button type="submit" disabled={embeddingMutation.isPending}>
-							{embeddingMutation.isPending
-								? "Processing..."
-								: "Start Processing"}
-						</Button>
-					</div>
-				)}
-			</form>
-		</Form>
+		<section className="flex justify-center  flex-col p-8">
+			<div className="overflow-auto max-h-[70dvh]">
+				<MarkdownMessageLazyLoader content={activeSource.content} />
+			</div>
+			<div className="flex justify-end gap-2 pt-2">
+				<Button
+					type="button"
+					variant="outline"
+					onClick={onCancel}
+					disabled={embeddingMutation.isPending}
+				>
+					Cancel
+				</Button>
+				<Button
+					type="button"
+					onClick={() => onFormSubmit()}
+					disabled={embeddingMutation.isPending}
+				>
+					{embeddingMutation.isPending ? "Processing..." : "Start Processing"}
+				</Button>
+			</div>
+		</section>
 	);
 }
 
@@ -363,7 +256,7 @@ export function SourcesRepository() {
 		queryKey: ["sources"],
 		queryFn: getSources,
 	});
-
+	console.log("🚀 ~ SourcesRepository ~ sources:", sources);
 	const form = useForm<SourceFormData>({
 		resolver: zodResolver(sourceSchema),
 		defaultValues: {
@@ -371,7 +264,7 @@ export function SourcesRepository() {
 			author: "",
 			type: "book",
 			url: "",
-			description: "",
+			content: "",
 		},
 	});
 
@@ -437,7 +330,7 @@ export function SourcesRepository() {
 				? format(new Date(source.publish_date), "yyyy-MM-dd")
 				: "",
 
-			description: source.description || "",
+			content: source.content || "",
 		});
 		setIsUploadDialogOpen(true);
 	};
@@ -497,7 +390,7 @@ export function SourcesRepository() {
 			const matchesSearch =
 				source.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				source.author?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				source.description?.toLowerCase().includes(searchTerm.toLowerCase());
+				source.content?.toLowerCase().includes(searchTerm.toLowerCase());
 			const matchesFilter = filterType === "all" || source.type === filterType;
 			return matchesSearch && matchesFilter;
 		})
@@ -639,6 +532,102 @@ export function SourcesRepository() {
 													</FormItem>
 												)}
 											/>
+											<FormField
+												control={form.control}
+												name="content"
+												render={({ field }) => {
+													const [fileName, setFileName] = useState<
+														string | null
+													>(null);
+
+													// We need to sync the file name state when the form is reset
+													if (field.value === "") {
+														if (fileName !== null) setFileName(null);
+													}
+
+													const handleFileChange = (
+														event: React.ChangeEvent<HTMLInputElement>
+													) => {
+														const file = event.target.files?.[0];
+														if (!file) {
+															setFileName(null);
+															field.onChange("");
+															return;
+														}
+														if (
+															file.type !== "text/markdown" &&
+															!file.name.endsWith(".md")
+														) {
+															form.setError("content", {
+																type: "manual",
+																message: "Please upload a valid .md file.",
+															});
+															setFileName(null);
+															field.onChange("");
+															return;
+														}
+														setFileName(file.name);
+														const reader = new FileReader();
+														reader.onload = (e) => {
+															const text = e.target?.result as string;
+															field.onChange(text); // Set the value for validation and submission
+														};
+														reader.onerror = () => {
+															form.setError("content", {
+																type: "manual",
+																message: "Failed to read the file.",
+															});
+															setFileName(null);
+															field.onChange("");
+														};
+														reader.readAsText(file);
+													};
+
+													return (
+														<FormItem>
+															<FormLabel>Content (from .md file)</FormLabel>
+															<FormControl>
+																<div className="flex flex-col gap-2">
+																	<Input
+																		id="content-file-upload"
+																		type="file"
+																		accept=".md,text/markdown"
+																		onChange={handleFileChange}
+																		className="sr-only"
+																		ref={field.ref}
+																	/>
+																	<label
+																		htmlFor="content-file-upload"
+																		className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-10 px-4 py-2 cursor-pointer"
+																	>
+																		{fileName
+																			? "Change File"
+																			: "Upload .md File"}
+																	</label>
+																	{fileName && (
+																		<p className="text-sm text-muted-foreground">
+																			Selected file: {fileName}
+																		</p>
+																	)}
+																</div>
+															</FormControl>
+															<FormMessage />
+
+															{field.value &&
+																typeof field.value === "string" &&
+																field.value.length > 0 && (
+																	<Textarea
+																		readOnly
+																		value={field.value}
+																		placeholder="Content from uploaded file..."
+																		rows={10}
+																		className="mt-2 font-mono text-sm"
+																	/>
+																)}
+														</FormItem>
+													);
+												}}
+											/>
 
 											<div className="grid grid-cols-2 gap-4">
 												<FormField
@@ -720,23 +709,6 @@ export function SourcesRepository() {
 												/>
 											</div>
 
-											<FormField
-												control={form.control}
-												name="description"
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Description</FormLabel>
-														<FormControl>
-															<Textarea
-																placeholder="Enter source description"
-																{...field}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-
 											<div className="flex justify-end gap-2">
 												<Button
 													type="button"
@@ -788,7 +760,7 @@ export function SourcesRepository() {
 						<div className="relative flex-1">
 							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 							<Input
-								placeholder="Search by title, author, or description..."
+								placeholder="Search by title, author..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								className="pl-10"
@@ -850,9 +822,9 @@ export function SourcesRepository() {
 													: source.title}
 											</CardTitle>
 											<CardDescription className="line-clamp-2  truncate text-wrap">
-												{source.description.length > 100
-													? source.description.slice(0, 100) + "..."
-													: source.description}
+												{source.content.length > 100
+													? source.content.slice(0, 100) + "..."
+													: source.content}
 											</CardDescription>
 										</div>
 									</div>
@@ -903,7 +875,7 @@ export function SourcesRepository() {
 											<Eye className="h-3 w-3 mr-1" />
 											View
 										</Button>
-										{!source.is_embedded && (
+										{source.is_embedded && (
 											<Button
 												variant="outline"
 												size="sm"
@@ -969,9 +941,9 @@ export function SourcesRepository() {
 												</Badge>
 												{getEmbeddingStatusBadge(source.is_embedded)}
 											</div>
-											<p className="text-sm text-muted-foreground line-clamp-1 mb-2">
-												{source.description}
-											</p>
+											<div className="overflow-auto max-h-[70dvh] h-[70dvh]">
+												<MarkdownMessageLazyLoader content={source.content} />
+											</div>
 											<div className="flex items-center gap-4 text-xs text-muted-foreground">
 												<span className="flex items-center gap-1">
 													<User className="h-3 w-3" />
@@ -994,7 +966,7 @@ export function SourcesRepository() {
 												<Eye className="h-3 w-3 mr-1" />
 												View
 											</Button>
-											{!source.is_embedded && (
+											{source.is_embedded && (
 												<Button
 													variant="outline"
 													size="sm"
@@ -1065,7 +1037,7 @@ export function SourcesRepository() {
 
 			{/* Source Detail Dialog */}
 			<Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-12">
 					{selectedSource && (
 						<SourceDetail
 							source={selectedSource}
@@ -1085,9 +1057,10 @@ export function SourcesRepository() {
 				open={!!activeSource}
 				onOpenChange={(open) => !open && setActiveSource(null)}
 			>
-				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-w-4xl  p-4 ">
 					<SourceEmbedding
 						activeSource={activeSource}
+						onCancel={() => setActiveSource(null)}
 						mutationFn={(mutation) => {
 							setEmbeddingMutation(mutation);
 						}}
