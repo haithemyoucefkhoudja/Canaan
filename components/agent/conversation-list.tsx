@@ -175,8 +175,8 @@ export function ConversationList() {
 	}
 
 	return (
-		<main className="flex-1 flex flex-col">
-			<div className="w-full h-96 overflow-hidden ">
+		<div className="flex-1 flex flex-col min-h-0">
+			<div className="w-full h-full overflow-hidden ">
 				{" "}
 				<ListScrollArea className="h-full ">
 					{isLoading ? (
@@ -197,11 +197,12 @@ export function ConversationList() {
 									return null;
 
 								return (
-									<SidebarGroup>
+									<SidebarGroup key={groupName}>
 										<SidebarGroupLabel> {groupName}</SidebarGroupLabel>
 										<SidebarGroupContent>
 											{groupConversations.map((chat) => (
 												<ConversationElement
+													key={chat.id}
 													onSelectConversation={onSelectConversation}
 													conversationItem={chat}
 												/>
@@ -214,7 +215,7 @@ export function ConversationList() {
 					)}
 				</ListScrollArea>
 			</div>
-		</main>
+		</div>
 	);
 }
 ConversationList.displayName = "ConversationList";

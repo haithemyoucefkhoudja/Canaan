@@ -29,13 +29,14 @@ import { useAuth } from "@/components/firebase-auth/AuthContext";
 
 import { supabase } from "@/lib/supabase/supabase";
 import { MessageContentText } from "@langchain/core/messages";
-import { generateMessages } from "@/test-messages";
+// import { generateMessages } from "@/test-messages";
 import { toast } from "sonner";
 import { useAsyncRoutePush } from "@/hooks/use-async-push";
 import { ConversationType } from "@/types/Conversation";
-import { usePathname } from "next/navigation";
+
 import { InputProvider } from "./input-provider";
 import { ConversationsProvider } from "./conversation-provider";
+import { SourceProvider } from "./source-provider";
 async function handleNewChat(id: string): Promise<Conversation> {
 	const newConversation = await createConversationDB({
 		title: "New Conversation",
@@ -51,7 +52,6 @@ interface ChatContextValue {
 	};
 	error: string | null;
 	conversation: ConversationType | null;
-	stopRef: React.MutableRefObject<boolean>;
 	stop: boolean;
 	isNewChat: boolean;
 	setStop: React.Dispatch<React.SetStateAction<boolean>>;
@@ -82,7 +82,6 @@ const ChatContext = createContext<ChatContextValue | undefined>(undefined);
 
 export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	// State management
-	const messageTemplates = generateMessages(20);
 	const [isNewChat, setIsNewChat] = useState(false);
 	const { user } = useAuth();
 	if (!user) throw new Error("User not authenticated");
@@ -104,7 +103,8 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		state: false,
 		id: null,
 	});
-	const stopRef = useRef(stop);
+	const abortControllerRef = useRef<AbortController | null>(null);
+
 	const newChatStarter = (emptyInput: () => void) => {
 		("newChatStarter");
 		setMessages([]);
@@ -114,13 +114,19 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		setIsLoading({ state: false, id: null });
 		emptyInput();
 	};
-	// Sync stopRef with stop state
+
+	// 5. This separate effect specifically watches the `stop` prop
 	useEffect(() => {
-		stopRef.current = stop;
-		if (stop) {
+		if (stop && abortControllerRef.current) {
+			console.log("Stop prop is true. Send Message requests...");
+
+			// Abort the ongoing requests
+			abortControllerRef.current.abort();
+
+			// You can also reset the loading state here if needed
 			setIsLoading({ state: false, id: null });
 		}
-	}, [stop]);
+	}, [stop]); // This effect only depends on the `stop` prop
 
 	const saveUserMessage = useCallback(
 		async (
@@ -190,18 +196,12 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		});
 	};
 	const updateConversation = useCallback(async () => {
+		abortControllerRef.current = new AbortController();
+		const signal = abortControllerRef.current.signal;
 		const conversationId = conversation!.id;
 		const trimmedHistory = messages.map((msg) => ({
 			role: msg.role.toLowerCase() as "user" | "assistant",
-			content: [
-				...(msg.content as MessageContentText[]),
-				...(remoteFilesAttachments.map((item) => {
-					return {
-						type: "image_url",
-						image_url: { url: item.url },
-					};
-				}) || []),
-			],
+			content: [...(msg.content as MessageContentText[])],
 		}));
 		const requestBody: ChatRequestBody = {
 			query: [
@@ -213,6 +213,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
 			attachments: remoteFilesAttachments,
 			task: "titleGenerator", // Using an existing task
+			signal,
 		};
 
 		const chatGenerator = handleChatRequest(requestBody);
@@ -228,12 +229,12 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 				} else if (event.type === "end") {
 					break;
 				} else if (event.type === "error") {
-					console.error("Failed to generate title:", event.data);
-					return;
+					const errorMessage = "Failed to generate title:" + event.data;
+					throw new Error(errorMessage);
 				}
 			}
-		} catch (e) {
-			console.error("Error while generating title:", e);
+		} catch (e: any) {
+			setError(e.message);
 			return;
 		}
 
@@ -263,6 +264,11 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		}
 	}, [isNewChat, conversation, messages.length, updateConversation]);
 	useEffect(() => {
+		if (conversation?.title == "New Conversation") {
+			setIsNewChat(true);
+		}
+	}, [conversation]);
+	useEffect(() => {
 		if (error) toast.error(error);
 	}, [error]);
 	const sendLLMMessage = async (
@@ -282,6 +288,8 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		setIsLoading({ state: true, id: optimisticAssistantId });
 		setError(null); // Clear previous errors
 		setStop(false); // Allow streaming
+		abortControllerRef.current = new AbortController();
+		const signal = abortControllerRef.current.signal;
 
 		let finalUserMessageId: string | null = null;
 		let messageAttachments: RemoteFileAttachment[] = [];
@@ -396,6 +404,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
 			attachments: messageAttachments,
 			task: "academicSearch",
+			signal: signal,
 		};
 
 		const chatGenerator = handleChatRequest(requestBody);
@@ -406,11 +415,11 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 		let newAction = "";
 		try {
 			for await (const event of chatGenerator) {
-				if (stopRef.current) break;
 				let updateType = "";
 				let newContent = "";
 				let newReasoning = "";
 
+				console.log("🚀 ~ sendLLMMessage ~ event:", event);
 				if (event.type === "message") {
 					newAction = "Generating...";
 					newContent = event.data;
@@ -418,7 +427,13 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 					updateType = "content";
 				} else if (event.type === "sources") {
 					newAction = "Sources...";
-					accumulatedSources = event.data; // Assuming sources are replaced, not appended
+					const sourcesWithoutContent = event.data?.map((source: any) => {
+						const { pageContent, ...restOfSource } = source;
+						// Return the new object that only contains the rest of the properties
+						return restOfSource;
+					});
+					accumulatedSources = sourcesWithoutContent; // Assuming sources are replaced, not appended
+
 					updateType = "sources";
 				} else if (event.type === "reasoning") {
 					newAction = "Reasoning...";
@@ -448,7 +463,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 				);
 			}
 
-			if (stopRef.current && !accumulatedContent) {
+			if (!accumulatedContent) {
 				// Ensure at least some content if stopped early
 				accumulatedContent = [{ text: "No Response", type: "text" }];
 				setMessages((prevMsgs) =>
@@ -558,7 +573,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
 			invalidateMessages(conversationId);
 		} catch (err: any) {
-			setError(`LLM processing error: ${err.MessageExtra}`);
+			setError(`LLM processing error: ${err.message}`);
 			setMessages((prev) =>
 				prev.map((msg) =>
 					msg.id === optimisticAssistantId
@@ -708,7 +723,6 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			setIsNewChat,
 			stop,
 			setStop,
-			stopRef,
 			setMessages,
 			messages,
 			isLoading,
@@ -723,7 +737,6 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	}, [
 		stop,
 		setStop,
-		stopRef,
 		setMessages,
 		messages,
 		isLoading,
@@ -738,7 +751,9 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 	return (
 		<ChatContext.Provider value={contextValue}>
 			<InputProvider>
-				<ConversationsProvider>{children}</ConversationsProvider>
+				<ConversationsProvider>
+					<SourceProvider>{children}</SourceProvider>
+				</ConversationsProvider>
 			</InputProvider>
 		</ChatContext.Provider>
 	);

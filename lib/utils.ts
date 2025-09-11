@@ -77,3 +77,49 @@ export function formatId(id: string) {
 export function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
+/**
+ * Fetches an image from a URL and converts it to a Base64 encoded string.
+ *
+ * @param {string} url The URL of the image to encode.
+ * @returns {Promise<string>} A promise that resolves with the Base64 encoded data URL.
+ * @throws {Error} If the fetch request fails or the response is not ok.
+ */
+export async function imageUrlToBase64(url: string): Promise<string> {
+	try {
+		// 1. Fetch the image
+		const response = await fetch(url);
+
+		// 2. Check if the request was successful
+		if (!response.ok) {
+			throw new Error(
+				`Failed to fetch image: ${response.status} ${response.statusText}`
+			);
+		}
+
+		// 3. Get the image data as a Blob
+		const blob = await response.blob();
+
+		// 4. Use FileReader to convert Blob to a a Base64 string (Data URL)
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+
+			// The 'loadend' event is fired when a read has completed, successfully or not.
+			reader.onloadend = () => {
+				// The result attribute contains the data as a URL representing the file's data as a base64 encoded string.
+				resolve(reader.result as string);
+			};
+
+			// The 'error' event is fired when the reading failed.
+			reader.onerror = (error) => {
+				reject(error);
+			};
+
+			// Start reading the Blob as a Data URL
+			reader.readAsDataURL(blob);
+		});
+	} catch (error) {
+		console.error("Error converting URL to Base64:", error);
+		// Re-throw the error or handle it as needed
+		throw error;
+	}
+}

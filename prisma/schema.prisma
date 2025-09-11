@@ -135,7 +135,7 @@ model Source {
   url          String
   author       String
   type         String
-  description  String
+  content  String         @default("(empty)")
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
   publish_date DateTime?    @db.Timestamptz(6)

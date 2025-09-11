@@ -11,7 +11,7 @@ import {
 	Share,
 	UserIcon,
 } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 // import MessageSources from "./message-sources";
 import { Copy } from "@/components/button-tools/copy";
@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useAuth } from "../firebase-auth/AuthContext";
 import BotIcon from "../icons/bot-icon";
 import { Loader } from "../ui/loader";
+import { useSource } from "@/providers/source-provider";
 const MessageBox = memo(function MessageBox({
 	message,
 	messageIndex,
@@ -50,39 +51,73 @@ const MessageBox = memo(function MessageBox({
 	if (!MessageContent) return null;
 	const isLoading = message.isLoading;
 	const { emptyInput } = useInput();
+	const { handleSourceClick } = useSource();
 	const { searchMode } = useSearchMode();
 	const [parsedMessage, setParsedMessage] = useState(MessageContent);
+	const contentRef = useRef<HTMLDivElement>(null);
 
 	const messageAttachments = message.attachments as Array<RemoteFileAttachment>;
 	const MessageSourcesArray = message.sources as unknown as Array<Document>;
 
 	useEffect(() => {
 		const regex = /\[(\d+)\]/g;
-
 		if (
 			message.role === "ASSISTANT" &&
-			message?.sources &&
-			(message.sources as Array<any>).length > 0
+			MessageSourcesArray &&
+			MessageSourcesArray.length > 0
 		) {
 			setParsedMessage(
-				MessageContent.map((item, _) => {
+				MessageContent.map((item) => {
 					return {
-						text: item.text.replace(
-							regex,
-							(_: any, number: number) =>
-								`<a href="${
-									(message.sources as Array<any>)[number - 1]?.metadata?.url
-								}" target="_blank" class="bg-light-secondary dark:bg-dark-secondary px-1 rounded ml-1 no-underline text-xs text-black/70 dark:text-white/70">${number}</a>`
-						),
+						text: item.text.replace(regex, (_, number) => {
+							const source = MessageSourcesArray[number - 1];
+							const documentId = source?.metadata?.document_id;
+
+							if (!documentId) return `[${number}]`; // Safety fallback
+
+							// Added "source-link" class for easier targeting
+							return `<a 
+                                data-document-id="${documentId}" 
+                                class="source-link bg-light-secondary dark:bg-dark-secondary px-1 rounded ml-1 no-underline text-xs text-black/70 dark:text-white/70 cursor-pointer"
+                            >${number}</a>`;
+						}),
 						type: item.type,
 					};
 				})
 			);
-		} else return setParsedMessage(MessageContent);
-	}, [MessageContent, message.sources, message.role]);
+		} else {
+			setParsedMessage(MessageContent);
+		}
+	}, [JSON.stringify(MessageContent), JSON.stringify(message.sources), message.role]);
+	// EFFECT FOR EVENT DELEGATION
+	useEffect(() => {
+		const handleClick = (event: MouseEvent) => {
+			const target = event.target as HTMLElement;
+			// Find the closest ancestor that is a source link
+			const link = target.closest("a.source-link");
+
+			if (link) {
+				event.preventDefault(); // Stop any potential default <a> behavior
+				const docId = link.getAttribute("data-document-id");
+				if (docId) {
+					handleSourceClick(docId); // Call the function from the parent
+				}
+			}
+		};
+
+		const container = contentRef.current;
+		container?.addEventListener("click", handleClick);
+
+		return () => {
+			container?.removeEventListener("click", handleClick);
+		};
+	}, [handleSourceClick]); // Re-attach if the handler function changes
 
 	return (
-		<div className={cn("w-full max-w-full break-words overflow-x-hidden ")}>
+		<div
+			className={cn("w-full max-w-full break-words overflow-x-hidden ")}
+			ref={contentRef}
+		>
 			{message.role === "USER" && (
 				<div className="flex flex-col space-y-2">
 					<div className="flex flex-row items-center space-x-2 mx-1">

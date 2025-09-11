@@ -10,6 +10,7 @@ export const placeholderConversation: Conversation = {
 };
 export const messages: Message[] = [
 	{
+		index: 1,
 		id: "msg_001",
 		conversation_id: conversationId,
 		role: Role.USER,
@@ -27,6 +28,7 @@ export const messages: Message[] = [
 		updated_at: new Date("2023-10-27T10:00:00Z"),
 	},
 	{
+		index: 2,
 		id: "msg_002",
 		conversation_id: conversationId,
 		role: Role.ASSISTANT,
@@ -44,6 +46,7 @@ export const messages: Message[] = [
 		updated_at: new Date("2023-10-27T10:00:05Z"),
 	},
 	{
+		index: 3,
 		id: "msg_003",
 		conversation_id: conversationId,
 		role: Role.USER,
@@ -61,6 +64,7 @@ export const messages: Message[] = [
 		updated_at: new Date("2023-10-27T10:01:10Z"),
 	},
 	{
+		index: 4,
 		id: "msg_004",
 		conversation_id: conversationId,
 		role: Role.ASSISTANT,

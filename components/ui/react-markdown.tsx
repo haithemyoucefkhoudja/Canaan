@@ -1,7 +1,13 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import { useMemo } from "react";
+import {
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useState,
+	useTransition,
+} from "react";
 interface MarkdownMessageProps {
 	content: string;
 	reasoning?: string;
@@ -32,6 +38,25 @@ export function MarkdownMessage({ content, reasoning }: MarkdownMessageProps) {
 			>
 				{content}
 			</ReactMarkdown>
+		</div>
+	);
+}
+// The component signature now accepts the content prop
+export function MarkdownMessageLazyLoader({ content }: { content: string }) {
+	const [isPending, startTransition] = useTransition();
+	const [internalContent, setInternalContent] = useState(content);
+
+	useEffect(() => {
+		// When the prop changes, start a non-urgent transition
+		// to update our internal state.
+		startTransition(() => {
+			setInternalContent(content);
+		});
+	}, [content]); // Dependency on the prop
+
+	return (
+		<div style={{ opacity: isPending ? 0.4 : 1 }}>
+			<MarkdownMessage content={internalContent} />
 		</div>
 	);
 }
