@@ -8,7 +8,7 @@ interface HomeSidebarProps {
 
 export function HomeSidebar({ games }: HomeSidebarProps) {
 	return (
-		<aside className="max-md:hidden col-span-4 h-screen sticky top-0 p-sides pt-top-spacing flex flex-col justify-between flex-1">
+		<aside className="col-span-4 h-screen md:sticky top-0 p-sides pt-top-spacing flex flex-col justify-between flex-1">
 			<div className="space-y-6">
 				<div className="space-y-4">
 					<h1 className="text-3xl font-bold  text-foreground">

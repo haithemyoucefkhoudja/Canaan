@@ -3,25 +3,9 @@
 import MobileMenu from "./mobile-menu";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { LogoSvg } from "@/components/icons/logo-svg";
-import { AuthStatus } from "@/components/auth.status";
-import ThemeIndicator from "@/components/theme-indicator";
-
-export const navItems = [
-	{
-		label: "Home",
-		href: "/",
-	},
-	{
-		label: "Games",
-		href: "/games",
-	},
-	{
-		label: "Library",
-		href: "/library",
-	},
-];
+import { NavigationMenuLarge } from "./large-screen";
+import { Fragment } from "react";
 
 interface HeaderProps {
 	collections: any[];
@@ -31,15 +15,17 @@ export function Header({ collections }: HeaderProps) {
 	const pathname = usePathname();
 
 	return (
-		<header className="grid fixed top-0 left-0 z-50 grid-cols-3 items-start w-full p-sides md:grid-cols-12 md:gap-sides">
-			<div className="block flex-none md:hidden">
-				<MobileMenu collections={collections} />
-			</div>
+		<Fragment>
+			<header className="grid fixed top-0 left-0 z-50 grid-cols-3 items-start w-full p-sides  md:hidden">
+				<div className="block flex-none ">
+					<MobileMenu collections={collections} />
+				</div>
 
-			<Link href="/" className="md:col-span-3 xl:col-span-2" prefetch>
-				<LogoSvg className="w-auto h-6 max-md:place-self-center md:w-full md:h-auto max-w-96" />
-			</Link>
-			<nav className="flex gap-2 justify-end items-center md:col-span-9 xl:col-span-10">
+				<Link href="/" className="md:col-span-3 xl:col-span-2" prefetch>
+					<LogoSvg className="w-auto h-6 max-md:place-self-center md:w-full md:h-auto max-w-96" />
+				</Link>
+			</header>
+			{/* <nav className="flex gap-2 justify-end items-center md:col-span-9 xl:col-span-10">
 				<ul className="items-center gap-5 py-0.5 px-3 bg-background  rounded-sm backdrop-blur-md hidden md:flex">
 					{navItems.map((item) => (
 						<li key={item.href}>
@@ -61,7 +47,13 @@ export function Header({ collections }: HeaderProps) {
 					<ThemeIndicator />
 					<AuthStatus />
 				</ul>
-			</nav>
-		</header>
+			</nav> */}
+			<header className="fixed md:flex top-0 left-0 z-50    w-full p-sides md:visible hidden ">
+				<Link href="/" prefetch>
+					<LogoSvg className="w-auto h-6 max-md:place-self-center md:w-full md:h-auto max-w-96" />
+				</Link>
+				<NavigationMenuLarge />
+			</header>
+		</Fragment>
 	);
 }

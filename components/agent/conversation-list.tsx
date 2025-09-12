@@ -16,6 +16,7 @@ import {
 	SidebarGroupLabel,
 	SidebarMenuSubItem,
 } from "../ui/sidebar";
+import { Loader } from "../ui/loader";
 type ConversationElementType = {
 	conversationItem: Conversation;
 	onSelectConversation: (conversationItem: Conversation) => void;
@@ -180,11 +181,9 @@ export function ConversationList() {
 				{" "}
 				<ListScrollArea className="h-full ">
 					{isLoading ? (
-						<div className="text-center text-muted-foreground py-4">
-							Loading ...
+						<div className="text-center h-full text-muted-foreground py-4">
+							<Loader size="md" />
 						</div>
-					) : error ? (
-						<div className="text-center text-red-500 py-4">{error}</div>
 					) : (
 						<InfiniteScroll
 							onLoadMore={() => fetchNextPage()}

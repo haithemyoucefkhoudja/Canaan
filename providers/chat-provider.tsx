@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { v4 as uuid } from "uuid";
-import { handleChatRequest, type ChatRequestBody } from "@/ai";
+import { handleChatRequestFront, type ChatRequestBody } from "@/ai";
 import type { StoreMessageResponse } from "@/types/Message";
 import { RemoteFileAttachment, ClientAttachment } from "@/types/attachment";
 import {
@@ -216,7 +216,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			signal,
 		};
 
-		const chatGenerator = handleChatRequest(requestBody);
+		const chatGenerator = handleChatRequestFront(requestBody);
 
 		let accumulatedTitle = "";
 		try {
@@ -407,7 +407,7 @@ export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
 			signal: signal,
 		};
 
-		const chatGenerator = handleChatRequest(requestBody);
+		const chatGenerator = handleChatRequestFront(requestBody);
 
 		let accumulatedContent = [{ text: "", type: "text" }];
 		let accumulatedSources: any[] = [];

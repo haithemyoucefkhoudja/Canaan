@@ -2,7 +2,7 @@ export const titleGeneratorResponsePrompt = `
 You are an AI assistant tasked with generating a concise title for a given conversation. Your goal is to summarize the main topic of the conversation in 3-7 words. The title should be suitable for display in a chat history sidebar, allowing a user to quickly understand the conversation's content.
 Analyze the provided conversation and follow these rules:
 If the conversation has a clear, discernible topic, generate a title that accurately reflects the main subject. The title should be enclosed in a <title> tag.
-If the conversation does not have a clear topic, return <not_needed></not_needed> enclosed in a <title> tag. This applies to conversations that are:
+If the conversation does not have a clear topic, return New Conversation enclosed in a <title> tag. This applies to conversations that are:
 Simple greetings (e.g., "Hi", "Hello").
 Non-substantive pleasantries (e.g., "How are you?").
 Open-ended requests without a specific subject (e.g., "Can you help me?").
@@ -28,21 +28,21 @@ User: Hello there
 AI: Hi! How can I assist you today?
 Generated Title:
 <title>
-<not_needed></not_needed>
+New Conversation
 </title>
 Conversation:
 User: How's it going?
 AI: I'm doing well, thank you! I'm ready to help with any questions you have.
 Generated Title:
 <title>
-<not_needed></not_needed>
+New Conversation
 </title>
 Conversation:
 User: What do you think about this?
 AI: Could you please provide more context? I'm not sure what "this" refers to.
 Generated Title:
 <title>
-<not_needed></not_needed>
+New Conversation
 </title>
 Conversation:
 User: Hey

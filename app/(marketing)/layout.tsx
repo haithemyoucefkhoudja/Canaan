@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header";
+import { PageLayout } from "@/components/layout/page-layout";
 import { GridPattern } from "@/components/shapes/grid";
 import { cn } from "@/lib/utils";
 
@@ -8,11 +9,11 @@ export default async function RootLayout({
 	children: React.ReactNode;
 }>) {
 	const collections: any[] = [
-		{ handle: "bingo-games", title: "Bingo Games" },
-		{ handle: "historical-quizzes", title: "Historical Quizzes" },
-		{ handle: "memory-games", title: "Memory Games" },
-		{ handle: "puzzle-games", title: "Puzzle Games" },
-		{ handle: "library", title: "Library" },
+		{ handle: "/games", title: "Games" },
+		{ handle: "/library", title: "Library" },
+		{ handle: "/agent", title: "Agent" },
+		{ handle: "/about-us", title: "AboutUs" },
+		{ handle: "/faq", title: "FAQ" },
 	];
 
 	return (
@@ -26,7 +27,7 @@ export default async function RootLayout({
 				)}
 			/>
 			<Header collections={collections} />
-			{children}
+			<PageLayout collections={collections}>{children}</PageLayout>
 			{/* </div> */}
 		</section>
 	);
