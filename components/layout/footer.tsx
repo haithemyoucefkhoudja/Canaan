@@ -2,14 +2,7 @@ import { LogoSvg } from "@/components/icons/logo-svg";
 import { AppLinks } from "./app-links";
 import { SidebarLinks } from "./sidebar/sidebar-links";
 
-export async function Footer() {
-	const collections = [
-		{ handle: "bingo-games", title: "Bingo Games" },
-		{ handle: "historical-quizzes", title: "Historical Quizzes" },
-		{ handle: "memory-games", title: "Memory Games" },
-		{ handle: "puzzle-games", title: "Puzzle Games" },
-		{ handle: "strategy-games", title: "Strategy Games" },
-	];
+export async function Footer({ collections }: { collections: any[] }) {
 	return (
 		<footer className="p-sides">
 			<div className="w-full md:h-[532px] p-sides md:p-11 text-background bg-foreground rounded-[12px] flex flex-col justify-between max-md:gap-8">

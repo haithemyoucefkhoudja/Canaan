@@ -4,6 +4,7 @@ import type { Embeddings } from "@langchain/core/embeddings";
 import {
 	ChatPromptTemplate,
 	MessagesPlaceholder,
+	HumanMessagePromptTemplate,
 } from "@langchain/core/prompts";
 import {
 	RunnableLambda,
@@ -64,13 +65,16 @@ class MetaAgent implements MetaAgentType {
 				new MessagesPlaceholder("query"),
 			]),
 			async (input) => {
-				console.log("Search retriever chain input LLM:", input);
+				console.log("Search retriever chain input LLM:");
 				return await llm.invoke(input);
 			},
 			this.strParser,
 			RunnableLambda.from(async (generatedQuery: string) => {
 				process.env.NODE_ENV === "development" &&
-					console.log("Lambda input (generated query):", generatedQuery);
+					console.log(
+						"Lambda input (generated query):",
+						generatedQuery.slice(0, 40)
+					);
 
 				try {
 					if (generatedQuery.toLowerCase().trim() === "not_needed") {
@@ -157,11 +161,11 @@ class MetaAgent implements MetaAgentType {
 		const contextRetriever = RunnableLambda.from(
 			async (input: BasicChainInput) => {
 				const { query, chat_history } = input;
-				console.log("Query:", query);
+				console.log("Query:");
 				let docs: Document[] | null = null;
 				if (this.config.searchDocuments) {
 					process.env.NODE_ENV == "development" &&
-						console.log("Generating search query with:", query);
+						console.log("Generating search query with: Query");
 					const searchRetrieverResult = await searchRetrieverChain.invoke({
 						chat_history,
 						query,
@@ -305,11 +309,9 @@ class MetaAgent implements MetaAgentType {
 		attachments: RemoteFileAttachment[]
 	) {
 		process.env.NODE_ENV == "development" &&
-			console.log("searchAndAnswer called with:", {
-				message,
-				history,
-				attachments,
-			});
+			console.log(
+				"searchAndAnswer called with: message, history, attachments,"
+			);
 		const imageAttachmentPromises = attachments.map(async (attachment) => {
 			// Each `async` function in the map returns a promise
 			const base64Image = await imageUrlToBase64(attachment.url); // Await the conversion
@@ -317,7 +319,6 @@ class MetaAgent implements MetaAgentType {
 			return {
 				type: "image_url" as const, // Use 'as const' for better type inference
 				image_url: {
-					// The result from imageUrlToBase64 is the full data URL, which is what you need here.
 					url: base64Image,
 				},
 			};

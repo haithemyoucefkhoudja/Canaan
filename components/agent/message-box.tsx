@@ -18,7 +18,6 @@ import { Copy } from "@/components/button-tools/copy";
 import Rewrite from "@/components/button-tools/rewrite";
 import MessageSources from "./message-sources";
 import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { useInput, useSearchMode } from "@/providers/input-provider";
 import { RemoteFileAttachment } from "@/types/attachment";
 import { Document } from "langchain/document";
 import { MessageContentText } from "@langchain/core/messages";
@@ -50,9 +49,7 @@ const MessageBox = memo(function MessageBox({
 	const MessageContent = message.content as MessageContentText[];
 	if (!MessageContent) return null;
 	const isLoading = message.isLoading;
-	const { emptyInput } = useInput();
 	const { handleSourceClick } = useSource();
-	const { searchMode } = useSearchMode();
 	const [parsedMessage, setParsedMessage] = useState(MessageContent);
 	const contentRef = useRef<HTMLDivElement>(null);
 
@@ -273,12 +270,7 @@ const MessageBox = memo(function MessageBox({
 										>
 											<Share size={18} />
 										</button>
-										<Rewrite
-											disabled={isLoading}
-											rewrite={() => {
-												rewrite(message.id, searchMode, emptyInput);
-											}}
-										/>
+										<Rewrite disabled={isLoading} messageId={message.id} />
 									</div>
 									<div className="flex flex-row items-center space-x-1">
 										<Copy
@@ -325,4 +317,5 @@ const MessageBox = memo(function MessageBox({
 		</div>
 	);
 });
+
 export default MessageBox;

@@ -352,10 +352,7 @@ export function SourcesRepository() {
 		switch (status) {
 			case "completed":
 				return (
-					<Badge
-						variant="secondary"
-						className="bg-green-100 text-green-800 text-xs"
-					>
+					<Badge variant="secondary" className=" text-xs">
 						<CheckCircle className="h-3 w-3 mr-1" />
 						Embedded
 					</Badge>

@@ -85,9 +85,9 @@ async function* streamSearchResponse(
 	try {
 		for await (const event of on(emitter, "data") as any) {
 			const parsedData = JSON.parse(event);
-			console.log("🚀 ~ streamSearchResponse ~ parsedData:", parsedData);
+			console.log("🚀 ~ streamSearchResponse ~ parsedData:");
 			if (parsedData.type === "end") {
-				yield { type: "end", message, sources };
+				yield { type: "end" };
 				break;
 			}
 			if (parsedData.type === "response") {
@@ -109,7 +109,7 @@ async function* streamSearchResponse(
 			}
 		}
 		console.log("End stream");
-		yield { type: "end", message, sources };
+		yield { type: "end" };
 	} catch (error) {
 		console.log("🚀 ~ streamSearchResponse ~ error:", error);
 		yield {
@@ -125,6 +125,7 @@ export interface ChatRequestBody {
 	history: Array<[string, any]>;
 	attachments?: RemoteFileAttachment[];
 }
+export type BackEndRequestBody = Omit<ChatRequestBody, "signal">;
 export interface UserChatRequestBody {
 	optimizationMode: "speed" | "balanced";
 	query: MessageContentText[];
@@ -153,7 +154,7 @@ async function initializeModels() {
 	return { llm, embeddings };
 }
 
-export async function* handleChatRequest(body: ChatRequestBody) {
+export async function* handleChatRequest(body: BackEndRequestBody) {
 	try {
 		const { llm, embeddings } = await initializeModels();
 		const searchHandler = Handlers[body.task];
@@ -185,5 +186,103 @@ export async function* handleChatRequest(body: ChatRequestBody) {
 			type: "error",
 			data: error.message,
 		};
+	}
+}
+
+/**
+ * Makes a streaming POST request and yields parsed events.
+ * This is an async generator function.
+ * @param {ChatRequestBody} requestBody - The body of the request.
+ */
+export async function* handleChatRequestFront(requestBody: ChatRequestBody) {
+	// The API endpoint
+	const api = "/api/agent"; // Or your actual API endpoint
+
+	try {
+		// 1. Make the API call using fetch with the signal for abortion
+		const response = await fetch(api, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			// Pass the signal here to make the request cancellable
+			signal: requestBody.signal,
+			// The body doesn't need the signal inside it
+			body: JSON.stringify({
+				query: requestBody.query,
+				history: requestBody.history,
+				attachments: requestBody.attachments,
+				task: requestBody.task,
+			}),
+		});
+
+		// 2. Handle non-ok responses
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`API Error: ${response.status} ${response.statusText} - ${errorText}`
+			);
+		}
+
+		// 3. Ensure the body is a readable stream
+		if (!response.body) {
+			throw new Error("Response body is not a readable stream.");
+		}
+
+		// 4. Set up the reader and decoder
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder("utf-8");
+		let buffer = "";
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+
+			// --- START: THE FIX IS HERE ---
+
+			// Split by the boundary between JSON objects: a closing brace followed by an opening brace.
+			// The positive lookahead (?={) ensures the opening brace of the next object is not consumed.
+			const potentialJsons = buffer.split(/}(?={)/g);
+
+			// The last element in the array might be an incomplete JSON object. We keep it in the buffer.
+			buffer = potentialJsons.pop() || "";
+
+			// Process all the complete JSON strings we've found.
+			for (const jsonString of potentialJsons) {
+				try {
+					// The split removed the closing brace, so we need to add it back.
+					const completeJson = jsonString + "}";
+					const event = JSON.parse(completeJson);
+					yield event;
+				} catch (error) {
+					console.error("Failed to parse JSON chunk:", jsonString + "}");
+					// This might happen if the server sends a malformed chunk.
+					// Depending on your needs, you might want to continue or yield an error.
+				}
+			}
+			// --- END: THE FIX IS HERE ---
+		}
+
+		// After the loop, process any complete JSON object remaining in the buffer.
+		if (buffer.trim()) {
+			try {
+				const event = JSON.parse(buffer);
+				yield event;
+			} catch (error) {
+				console.error("Failed to parse final buffer content:", buffer);
+			}
+		}
+	} catch (error: any) {
+		// Handle errors, including the AbortError from cancellation
+		if (error.name === "AbortError") {
+			console.log("Chat request was aborted.");
+			// Simply return to gracefully end the generator
+			return;
+		}
+		// For other errors, yield an error event for the front-end to handle
+		console.error("Error in handleChatRequest:", error);
+		yield { type: "error", data: error.message };
 	}
 }
