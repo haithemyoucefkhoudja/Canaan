@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 interface AchievementFormProps {
 	achievement: Omit<Achievement, "created_at" | "updated_at"> | null;
 	onFinished: () => void;
