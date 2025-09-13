@@ -19,7 +19,7 @@ export default function GameModeSelectPage() {
         
         <div className="flex flex-col md:flex-row gap-8">
           {/* --- Single Player Card --- */}
-          <Link href="/games/map/play" className="flex-1">
+          <Link href="/games/map/101" className="flex-1">
             <div className="p-8 bg-gray-700/50 backdrop-blur-md rounded-2xl shadow-lg border border-gray-600 hover:bg-gray-700 hover:border-yellow-400 transition-all duration-300 h-full flex flex-col items-center">
               <User size={40} className="text-yellow-400 mb-4" />
               <h2 className="text-3xl font-bold text-white mb-2">Single Player</h2>
