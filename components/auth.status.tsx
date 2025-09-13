@@ -19,6 +19,7 @@ import { signOut } from "firebase/auth";
 import { useAuth } from "@/components/firebase-auth/AuthContext";
 import { logout } from "@/api";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const navItems = [
 	{
@@ -31,11 +32,14 @@ export const navItems = [
 	},
 ];
 
-export function AuthStatus() {
+export function AuthStatus({
+	ItemsRender,
+}: {
+	ItemsRender?: () => JSX.Element;
+}) {
 	const router = useRouter();
 	const { user } = useAuth();
-	console.log("🚀 ~ AuthStatus ~ user:", user);
-	const pathname = usePathname();
+	const isMobile = useIsMobile();
 
 	const [handleLogout, isLogoutLoading] = useLoadingCallback(async () => {
 		const auth = getFirebaseAuth();
@@ -45,20 +49,9 @@ export function AuthStatus() {
 	});
 
 	if (!user) {
-		return navItems.map((item) => (
-			<li key={item.href}>
-				<Link
-					href={item.href}
-					className={cn(
-						"font-semibold text-base transition-colors duration-200 uppercase",
-						pathname === item.href ? "text-foreground" : "text-muted-foreground"
-					)}
-					prefetch
-				>
-					{item.label}
-				</Link>
-			</li>
-		));
+		if (!ItemsRender) return null;
+
+		return ItemsRender();
 	}
 
 	return (
@@ -72,7 +65,7 @@ export function AuthStatus() {
 						{user?.photo_url ? (
 							<AvatarImage
 								className="object-cover"
-								src={user.photo_url || "/placeholder.svg"}
+								src={user.photo_url}
 								alt={user.display_name || "User"}
 							/>
 						) : null}

@@ -1,3 +1,4 @@
+import { Actor } from "@prisma/client";
 import { supabase } from "./supabase";
 
 export async function getActors() {
@@ -7,19 +8,12 @@ export async function getActors() {
 	return data;
 }
 
-export async function createActor(actorData: any) {
+export async function createActor(
+	actorData: Omit<Actor, "created_at" | "updated_at" | "id">
+) {
 	const { data, error } = await supabase
 		.from("actor")
-		.insert({
-			name: actorData.name,
-			actor_type: actorData.actor_type,
-			description: actorData.description,
-			birth_date: actorData.birth_date || null,
-			death_date: actorData.death_date || null,
-			founded_date: actorData.founded_date || null,
-			dissolved_date: actorData.dissolved_date || null,
-			nationality: actorData.nationality || null,
-		})
+		.insert<Omit<Actor, "created_at" | "updated_at" | "id">>(actorData)
 		.select()
 		.single();
 
@@ -27,19 +21,13 @@ export async function createActor(actorData: any) {
 	return data;
 }
 
-export async function updateActor(actorId: string, actorData: any) {
+export async function updateActor(
+	actorId: string,
+	actorData: Omit<Actor, "created_at" | "updated_at" | "id">
+) {
 	const { data, error } = await supabase
 		.from("actor")
-		.update({
-			name: actorData.name,
-			actor_type: actorData.actor_type,
-			description: actorData.description,
-			birth_date: actorData.birth_date || null,
-			death_date: actorData.death_date || null,
-			founded_date: actorData.founded_date || null,
-			dissolved_date: actorData.dissolved_date || null,
-			nationality: actorData.nationality || null,
-		})
+		.update<Omit<Actor, "created_at" | "updated_at" | "id">>(actorData)
 		.eq("id", actorId)
 		.select()
 		.single();

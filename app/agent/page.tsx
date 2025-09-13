@@ -1,6 +1,12 @@
 // file: app/page.tsx
-import { HistoryAssistant } from "@/components/history-assistant";
+import WelcomePage from "@/components/agent/welcome-page";
 
-export default function HomePage() {
-  return <HistoryAssistant />;
+export default async function HomePage({
+	searchParams,
+}: {
+	searchParams: { [key: string]: string | string[] | undefined };
+}) {
+	const agentIdNotFound =
+		typeof searchParams.notFound == "string" ? searchParams.notFound : "";
+	return <WelcomePage agentIdNotFound={agentIdNotFound}></WelcomePage>;
 }

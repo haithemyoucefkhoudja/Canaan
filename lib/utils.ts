@@ -1,6 +1,5 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { COLOR_MAP } from "@/constants";
 import qs from "query-string";
 
 export function cn(...inputs: ClassValue[]) {
@@ -34,25 +33,6 @@ export function createUrl(pathname: string, params: URLSearchParams | string) {
 	return `${pathname}${queryString}`;
 }
 
-export function getColorHex(colorName: string): string | [string, string] {
-	const lowerColorName = colorName.toLowerCase();
-
-	// Check for exact match first
-	if (COLOR_MAP[lowerColorName]) {
-		return COLOR_MAP[lowerColorName];
-	}
-
-	// Check for partial matches (for cases where color name might have extra text)
-	for (const [key, value] of Object.entries(COLOR_MAP)) {
-		if (lowerColorName.includes(key) || key.includes(lowerColorName)) {
-			return value;
-		}
-	}
-
-	// Return a default color if no match found
-	return "#666666";
-}
-
 export const getLabelPosition = (
 	index: number
 ): "top-left" | "top-right" | "bottom-left" | "bottom-right" => {
@@ -73,4 +53,41 @@ export const formatSize = (size: number) => {
 };
 export function formatId(id: string) {
 	return `..${id.substring(id.length - 6)}`;
+}
+export function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+/**
+ * Fetches an image from a URL and converts it to a Base64 encoded string.
+ *
+ * @param {string} url The URL of the image to encode.
+ * @returns {Promise<string>} A promise that resolves with the Base64 encoded data URL.
+ * @throws {Error} If the fetch request fails or the response is not ok.
+ */
+export async function imageUrlToBase64(url: string): Promise<string> {
+	try {
+		const startTime = new Date();
+
+		// Dynamically import axios to avoid including it in browser bundles
+		const axios = (await import("axios")).default;
+
+		const response = await axios.get(url, {
+			responseType: "arraybuffer", // Important to get data as a buffer
+		});
+
+		// Get MIME type from the response headers
+		const mimeType = response.headers["content-type"];
+
+		// Convert the buffer to a Base64 string
+		const base64 = Buffer.from(response.data, "binary").toString("base64");
+		const endTime = new Date();
+
+		const timeElapsedMs = endTime.getTime() - startTime.getTime();
+		console.log(`Time elapsed: ${timeElapsedMs} milliseconds`);
+		// Construct the Data URL
+		return `data:${mimeType};base64,${base64}`;
+	} catch (error: any) {
+		console.error("Node.js - Error converting URL to Base64:", error.message);
+		throw error;
+	}
 }
