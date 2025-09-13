@@ -65,18 +65,30 @@ export class JinaAIEmbeddings extends Embeddings {
 		this.maxRetries = fields?.maxRetries ?? 3;
 		this.retryDelay = fields?.retryDelay ?? 1000;
 	}
+	async *embedDocumentsGenerator(texts: string[]) {
+		for (let i = 0; i < texts.length; i++) {
+			const text = texts[i];
 
+			// Use the new method with retry logic to embed a single document
+			const embedding = await this._embedSingleDocumentWithRetry(text);
+			yield embedding;
+			yield { progress: i, total: texts.length };
+			// If it's not the last document, wait for the specified timeout.
+			if (i < texts.length - 1) {
+				await sleep(this.timeoutBetweenDocs);
+			}
+		}
+	}
 	/**
 	 * Generates embeddings for a list of documents, one at a time.
 	 * This method processes each document serially, with a configurable delay
 	 * and retry mechanism between each API call.
 	 */
-	async embedDocuments(texts: string[]): Promise<number[][]> {
+	async embedDocuments(texts: string[]) {
 		const allEmbeddings: number[][] = [];
 
 		for (let i = 0; i < texts.length; i++) {
 			const text = texts[i];
-			console.log(`Embedding document ${i + 1}/${texts.length}...`);
 
 			// Use the new method with retry logic to embed a single document
 			const embedding = await this._embedSingleDocumentWithRetry(text);
@@ -133,7 +145,6 @@ export class JinaAIEmbeddings extends Embeddings {
 
 				// Calculate delay with exponential backoff (e.g., 1s, 2s, 4s, ...)
 				const delay = this.retryDelay * Math.pow(2, attempt - 1);
-				console.log(`Retrying in ${delay}ms...`);
 				await sleep(delay);
 			}
 		}
@@ -182,7 +193,7 @@ export class JinaAIEmbeddings extends Embeddings {
 		const sortedData: any[] = json.data.sort(
 			(a: any, b: any) => a.index - b.index
 		);
-		console.log("🚀 ~ JinaAIEmbeddings ~ _callApi ~ sortedData:", sortedData);
+		// console.log("🚀 ~ JinaAIEmbeddings ~ _callApi ~ sortedData:", sortedData);
 
 		return sortedData.map((item: any) => item.embedding);
 	}

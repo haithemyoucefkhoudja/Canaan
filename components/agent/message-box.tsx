@@ -218,8 +218,8 @@ const MessageBox = memo(function MessageBox({
 							</div>
 						)}
 
-						<div className="flex flex-col space-y-2 w-full h-full">
-							<div className="flex flex-row items-center space-x-2 px-2 h-full">
+						<div className="flex flex-col space-y-2 w-full ">
+							<div className="flex flex-row items-center space-x-2 px-2 ">
 								{isLoading ? (
 									<div className="flex flex-col items-center">
 										<div className="w-10 h-10 aspect-square flex items-center justify-center">
@@ -243,24 +243,11 @@ const MessageBox = memo(function MessageBox({
 									{message.index}
 								</span>
 							</div>
-							{!isLoading ? (
-								<MarkdownMessage
-									content={parsedMessage[0].text}
-								></MarkdownMessage>
-							) : (
-								<div>
-									{/* {message.reasoning && (
-										<div className="border-l-2 px-2 border-primary/60">
-											<p className="text-foreground/55 mb-2 text-wrap break-words">
-												{message.reasoning}
-											</p>
-										</div>
-									)} */}
-									<p className="break-words text-wrap">
-										{parsedMessage[0].text}
-									</p>
-								</div>
-							)}
+
+							<MarkdownMessage
+								content={parsedMessage[0].text}
+							></MarkdownMessage>
+
 							{
 								<div className="flex flex-row items-center justify-between w-full text-black dark:text-white py-4 -mx-2">
 									<div className="flex flex-row items-center space-x-1">

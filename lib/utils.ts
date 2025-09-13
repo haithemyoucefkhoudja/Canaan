@@ -57,6 +57,10 @@ export function formatId(id: string) {
 export function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
+export function formatContent(content: string, limit = 5000) {
+	if (content.length < limit) return content;
+	else return `${content.slice(0, limit)}....`;
+}
 /**
  * Fetches an image from a URL and converts it to a Base64 encoded string.
  *

@@ -1,5 +1,6 @@
 import { Event } from "@prisma/client";
 import { supabase } from "./supabase";
+import { EventWLinks } from "@/types/events";
 type EventInput = Omit<Event, "id" | "created_at" | "updated_at">;
 // Database query functions
 export async function getEvents() {
@@ -244,27 +245,41 @@ export async function deleteEvent(event_id: string) {
 }
 
 export async function getEventsByDateRange(startYear: number, endYear: number) {
+	// The start date is correct: greater than or equal to the first moment of the start year.
+	const startDate = `${startYear}-01-01`;
+
+	// The end date should be less than the first moment of the *next* year.
+	const endDate = `${endYear + 1}-01-01`;
+
 	const { data, error } = await supabase
 		.from("event")
 		.select(
 			`
-      *,
-      locationLinks:location_link (
-        location:location (*)
-      ),
-      actorLinks:actor_link (
-        role,
-        actor:actor (*)
-      ),
-	   sourceLinks:source_link (
-          source:source (*)
-    ),
-    `
+            id, name, description, start_date, end_date, tags,
+            locationLinks:location_link (
+                location:location (*)
+            ),
+            actorLinks:actor_link (
+                role,
+                actor:actor (*)
+            ),
+            sourceLinks:source_link (
+                source:source (*)
+            )
+            `
 		)
-		.gte("start_date", `${startYear}-01-01`)
-		.lte("start_date", `${endYear}-12-31`)
+		// Correctly filters from the beginning of the start year...
+		.gte("start_date", startDate)
+		// ...to everything BEFORE the beginning of the next year.
+		.lt("start_date", endDate)
 		.order("start_date", { ascending: true });
 
-	if (error) throw error;
-	return data;
+	console.log("🚀 ~ getEventsByDateRange ~ data:", data);
+	if (error) {
+		console.error("Error fetching events by date range:", error);
+		throw error;
+	}
+
+	// The 'data' will be correctly typed if you've set up Supabase types.
+	return data as any as EventWLinks[];
 }

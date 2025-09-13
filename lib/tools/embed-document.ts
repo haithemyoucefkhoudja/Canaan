@@ -20,7 +20,7 @@ const apiKey = process.env.JINA_API_KEY;
  * @param metadata A JSON object with additional details about the source.
  * @returns The number of chunks that were successfully created and stored.
  */
-export async function createEmbeddingsWithLangChain(
+export async function* createEmbeddingsWithLangChain(
 	supabase: SupabaseClient<any, "public", any>,
 	sourceId: string,
 	content: string,
@@ -51,17 +51,19 @@ export async function createEmbeddingsWithLangChain(
 		console.log("No valid chunks to process after filtering.");
 		throw new Error("No valid chunks to process after filtering.");
 	}
+	// 3. Create an embedding for each chunk AND YIELD PROGRESS
+	const chunkEmbeddings: number[][] = [];
+	const embeddingGenerator = embeddings.embedDocumentsGenerator(chunks);
 
-	// 3. Create an embedding for each chunk
-	// embedDocuments is efficient as it can make batch requests.
-	const chunkEmbeddings = await embeddings.embedDocuments(chunks);
-	chunkEmbeddings.map((chunkEmb, index) => {
-		if (chunkEmb.length == 0) {
-			console.log("🚀 ~ createEmbeddingsWithLangChain ~ chunkEmb:", chunkEmb);
-			console.log("🚀 ~ createEmbeddingsWithLangChain ~ index:", index);
+	for await (const progressOrResult of embeddingGenerator) {
+		if ((progressOrResult as any).progress !== undefined) {
+			// This is a progress update, yield it up
+			yield progressOrResult;
+		} else {
+			// This is the final result (the array of embeddings)
+			chunkEmbeddings.push(progressOrResult as number[]);
 		}
-	});
-	console.log("Embeddings created for all chunks.");
+	}
 
 	// 4. Combine chunks, embeddings, and metadata into objects for insertion
 	// This is the key step that perfectly matches your schema.

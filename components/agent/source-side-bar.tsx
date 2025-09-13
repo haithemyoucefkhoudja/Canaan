@@ -22,10 +22,8 @@ import { MarkdownMessageLazyLoader } from "../ui/react-markdown";
 import { useSource } from "@/providers/source-provider";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
-import { Fragment, useEffect, useState } from "react";
-import { useResizeObserver } from "@/hooks/use-element-size";
+import { Fragment, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ListScrollArea } from "../ui/list-scroll-area";
 import { useParams } from "next/navigation";
 
 // A helper component to render the dynamic content
@@ -62,7 +60,7 @@ const DocumentViewer = ({ documentId }: { documentId: string }) => {
 		// 3. The OUTER wrapper. It gets the ref and takes up natural space. It is never collapsed.
 		<div className="flex flex-col h-full">
 			<div className="w-full h-full overflow-hidden px-2 ">
-				<ListScrollArea className="h-full">
+				<ScrollArea className="h-full">
 					{/* All of your original content goes inside this inner wrapper */}
 					<header className="p-4 border-b whitespace-nowrap">
 						<h2 className="text-xl font-bold truncate">
@@ -87,7 +85,7 @@ const DocumentViewer = ({ documentId }: { documentId: string }) => {
 					<MarkdownMessageLazyLoader
 						content={document.content}
 					></MarkdownMessageLazyLoader>
-				</ListScrollArea>
+				</ScrollArea>
 			</div>
 		</div>
 	);
@@ -113,11 +111,11 @@ const SourceSideBar = () => {
 					<SidebarMenu>
 						{/* This trigger can still be used to manually collapse/expand */}
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild className="md:size-10 size-8 md:p-0 ">
+							<SidebarMenuButton asChild className="size-8 md:p-0 ">
 								<SidebarTrigger
 									sidebarId="source"
-									variant="outline"
 									size="icon"
+									variant={isCollapsed ? "default" : "ghost"}
 									className=""
 									icon={() => <BookMarkedIcon />}
 								/>

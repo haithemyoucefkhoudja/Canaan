@@ -1,4 +1,3 @@
-import { AppLinks } from "../app-links";
 import HeroAreaLinks from "../hero-area-links";
 import AnimatedText from "./animated-text";
 

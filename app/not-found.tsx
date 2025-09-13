@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { PageLayout } from "@/components/layout/page-layout";
-
+const collections: any[] = [
+	{ handle: "/games", title: "Games" },
+	{ handle: "/library", title: "Library" },
+	{ handle: "/agent", title: "Agent" },
+	{ handle: "/about-us", title: "AboutUs" },
+	{ handle: "/faq", title: "FAQ" },
+];
 export default function NotFound() {
 	return (
-		<PageLayout>
+		<PageLayout collections={collections}>
 			<div className="min-h-[90vh] flex items-center justify-center px-4">
 				<div className="text-center max-w-md mx-auto">
 					<div className="mb-8">

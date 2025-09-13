@@ -19,13 +19,14 @@ export function MarkdownMessage({ content, reasoning }: MarkdownMessageProps) {
 	// const MemoizedSyntaxHighlighter = useMemo(() => SyntaxHighlighter, []);
 	const components = useMemo(() => {
 		return {
-			p: ({ children }: any) => (
-				<p className="mb-2 text-wrap break-words">{children}</p>
+			p: ({ children }: any) => <p className="mb-2 text-wrap">{children}</p>,
+			code: ({ children }: any) => (
+				<code className="mb-2 text-wrap">{children}</code>
 			),
 		};
 	}, [remarkPlugins, rehypePlugins]);
 	return (
-		<div data-tauri-drag-region className="w-full px-2">
+		<div className="w-full px-2 break-words hyphens-auto">
 			{reasoning && (
 				<div className="border-l-2 px-2 border-primary/60 w-full">
 					<p className="text-foreground/55 mb-2 text-wrap">{reasoning}</p>
