@@ -4,7 +4,6 @@ import { Work_Sans, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-client";
 import { Toaster } from "@/components/ui/sonner";
-import { Header } from "@/components/layout/header";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/components/firebase-auth/AuthProvider";
 import { getTokens } from "next-firebase-auth-edge";

@@ -13,6 +13,13 @@
                 "GameRoom"
             ],
             "tag": "v1"
+        },
+        // --- ADD THIS NEW MIGRATION FOR THE QUIZ GAME ---
+        {
+            "new_classes": [
+                "QuizGameDO"
+            ],
+            "tag": "v2"
         }
     ],
     "durable_objects": {
@@ -20,6 +27,11 @@
             {
                 "class_name": "GameRoom",
                 "name": "GAME_ROOM"
+            },
+            // --- ADD THIS NEW BINDING FOR THE QUIZ GAME ---
+            {
+                "class_name": "QuizGameDO",
+                "name": "QUIZ_SESSIONS"
             }
         ]
     },
@@ -57,4 +69,3 @@
      */
     // "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
 }
-
