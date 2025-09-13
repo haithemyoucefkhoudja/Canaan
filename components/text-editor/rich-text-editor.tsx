@@ -45,7 +45,7 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ListScrollArea } from "../ui/list-scroll-area";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface RichTextEditorProps {
 	content: string;
@@ -648,11 +648,11 @@ export function RichTextEditor({
 			</div>
 
 			{/* Editor */}
-			<ListScrollArea data-tauri-drag-region className="h-full">
+			<ScrollArea className="h-full">
 				<div className="flex-1 overflow-y-auto">
 					<EditorContent editor={editor} className="h-full" />
 				</div>
-			</ListScrollArea>
+			</ScrollArea>
 
 			{/* Hidden file input */}
 			<input

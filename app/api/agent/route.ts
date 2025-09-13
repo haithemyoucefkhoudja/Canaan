@@ -1,20 +1,10 @@
 // File: app/api/agent/route.js
 
 import { NextRequest, NextResponse } from "next/server";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { BackEndRequestBody, handleChatRequest } from "@/ai";
-import { Document } from "langchain/document";
 export async function POST(request: NextRequest) {
 	try {
 		const body: BackEndRequestBody = await request.json();
-		// const { query, history, attachments,task } = body;
-
-		// if (!message) {
-		// 	return NextResponse.json(
-		// 		{ error: "Message is required" },
-		// 		{ status: 400 }
-		// 	);
-		// }
 
 		const stream = iteratorToStream(
 			makeIterator(handleChatRequest({ ...body }))

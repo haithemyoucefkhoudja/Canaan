@@ -742,7 +742,7 @@ export function HistoryAssistant() {
 					</div>
 				</div>{" "}
 				{/* Ensures this container takes up remaining space and is a positioning context */}
-				<MessageList />
+				{/* <MessageList /> */}
 			</div>
 		</div>
 	);

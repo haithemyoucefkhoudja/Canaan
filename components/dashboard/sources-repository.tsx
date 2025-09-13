@@ -77,99 +77,44 @@ import {
 } from "@/lib/supabase";
 import { sourceSchema, type SourceFormData } from "@/lib/validations/source";
 import { toast } from "sonner";
-import { Source } from "@prisma/client";
 import React from "react";
 import { format } from "date-fns";
 import { MarkdownMessageLazyLoader } from "../ui/react-markdown";
+import { formatContent } from "@/lib/utils";
+import { ScrollArea } from "../ui/scroll-area";
+import { EmbeddingProgress } from "./embedding-progress";
+import { SourceDB } from "@/types/source";
 
 export default function SourceEmbedding({
 	activeSource,
-	mutationFn,
-	onCancel,
+	onClose,
 }: {
-	activeSource: Source | null;
-	mutationFn: (
-		mutation: UseMutationResult<
-			EmbedApiResponse,
-			Error,
-			{
-				sourceId: string;
-				content: string;
-				metadata: any;
-			},
-			unknown
-		>
-	) => void;
-	onCancel: () => void;
+	activeSource: SourceDB | null;
+
+	onClose: () => void;
 }) {
 	if (!activeSource) return null;
 
-	const queryClient = useQueryClient();
-
-	const embeddingMutation = useMutation({
-		mutationFn: ({
-			sourceId,
-			metadata,
-			content,
-		}: {
-			sourceId: string;
-			content: string;
-			metadata: any;
-		}) => createDocumentEmbedding(sourceId, content, metadata),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["sources"] });
-			toast.success("Embedding process started");
-		},
-		onError: (error) => {
-			toast.error("Failed to start embedding process");
-			console.error("Error starting embedding:", error);
-		},
-	});
-
-	useEffect(() => {
-		mutationFn(embeddingMutation);
-	}, [embeddingMutation.isPending]);
-
-	// This function is now called by the form's onSubmit handler
-	const onFormSubmit = () => {
-		const metadata = {
-			sourceName: activeSource.title,
-			author: activeSource.author,
-			publishDate: activeSource.publish_date ? activeSource.publish_date : null,
-			type: activeSource.type,
-			url: activeSource.url,
-			createdAt: activeSource.created_at,
-		};
-
-		embeddingMutation.mutate({
-			sourceId: activeSource.id,
-			content: activeSource.content,
-			metadata,
-		});
-	};
-
 	return (
 		<section className="flex justify-center  flex-col p-8">
-			<div className="overflow-auto max-h-[70dvh]">
-				<MarkdownMessageLazyLoader content={activeSource.content} />
-			</div>
-			<div className="flex justify-end gap-2 pt-2">
-				<Button
-					type="button"
-					variant="outline"
-					onClick={onCancel}
-					disabled={embeddingMutation.isPending}
-				>
-					Cancel
-				</Button>
-				<Button
-					type="button"
-					onClick={() => onFormSubmit()}
-					disabled={embeddingMutation.isPending}
-				>
-					{embeddingMutation.isPending ? "Processing..." : "Start Processing"}
-				</Button>
-			</div>
+			{/* <div className="overflow-auto max-h-[70dvh] max-w-[50rem]"> */}
+
+			<Card className="bg-card ">
+				<CardHeader>
+					<CardTitle className="text-lg">Text Content</CardTitle>
+				</CardHeader>
+				<CardContent className="max-w-3xl">
+					<div className="w-full h-96 overflow-hidden px-2 ">
+						<ScrollArea className="h-full">
+							<MarkdownMessageLazyLoader
+								content={formatContent(activeSource.content)}
+							/>
+						</ScrollArea>
+					</div>
+				</CardContent>
+			</Card>
+			{/* </div> */}
+			<EmbeddingProgress activeSource={activeSource} onClose={onClose} />
 		</section>
 	);
 }
@@ -230,7 +175,7 @@ export function SourcesRepository() {
 	const [filterType, setFilterType] = useState("all");
 	const [sortBy, setSortBy] = useState("title");
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-	const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+	const [selectedSource, setSelectedSource] = useState<SourceDB | null>(null);
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 	const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 	const [embeddingMutation, setEmbeddingMutation] = useState<
@@ -245,14 +190,14 @@ export function SourcesRepository() {
 			unknown
 		>
 	>();
-	const [activeSource, setActiveSource] = useState<Source | null>(null);
+	const [activeSource, setActiveSource] = useState<SourceDB | null>(null);
 	const queryClient = useQueryClient();
 
 	const {
 		data: sources = [],
 		isLoading,
 		error,
-	} = useQuery<Source[]>({
+	} = useQuery<SourceDB[]>({
 		queryKey: ["sources"],
 		queryFn: getSources,
 	});
@@ -319,7 +264,7 @@ export function SourcesRepository() {
 		}
 	};
 
-	const handleEditSource = (source: Source) => {
+	const handleEditSource = (source: SourceDB) => {
 		setSelectedSource(source);
 		form.reset({
 			title: source.title || "",
@@ -341,7 +286,7 @@ export function SourcesRepository() {
 		}
 	};
 
-	const handleViewSource = (source: Source) => {
+	const handleViewSource = (source: SourceDB) => {
 		setSelectedSource(source);
 		setIsDetailDialogOpen(true);
 	};
@@ -795,7 +740,7 @@ export function SourcesRepository() {
 			{/* Sources Grid/List */}
 			{viewMode === "grid" ? (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{filteredSources.map((source: Source) => {
+					{filteredSources.map((source: SourceDB) => {
 						const typeInfo = getSourceTypeInfo(source.type);
 						const Icon = typeInfo.icon;
 						return (
@@ -872,7 +817,7 @@ export function SourcesRepository() {
 											<Eye className="h-3 w-3 mr-1" />
 											View
 										</Button>
-										{source.is_embedded && (
+										{!source.is_embedded && (
 											<Button
 												variant="outline"
 												size="sm"
@@ -963,7 +908,7 @@ export function SourcesRepository() {
 												<Eye className="h-3 w-3 mr-1" />
 												View
 											</Button>
-											{source.is_embedded && (
+											{!source.is_embedded && (
 												<Button
 													variant="outline"
 													size="sm"
@@ -1034,7 +979,7 @@ export function SourcesRepository() {
 
 			{/* Source Detail Dialog */}
 			<Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-12">
+				<DialogContent className="max-w-4xl ">
 					{selectedSource && (
 						<SourceDetail
 							source={selectedSource}
@@ -1054,13 +999,10 @@ export function SourcesRepository() {
 				open={!!activeSource}
 				onOpenChange={(open) => !open && setActiveSource(null)}
 			>
-				<DialogContent className="max-w-4xl  p-4 ">
+				<DialogContent className="max-w-4xl   p-4 ">
 					<SourceEmbedding
 						activeSource={activeSource}
-						onCancel={() => setActiveSource(null)}
-						mutationFn={(mutation) => {
-							setEmbeddingMutation(mutation);
-						}}
+						onClose={() => setActiveSource(null)}
 					/>
 				</DialogContent>
 			</Dialog>
