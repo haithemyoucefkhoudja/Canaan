@@ -21,6 +21,7 @@ import {
 	StopCircleIcon,
 	Circle,
 	Database,
+	Image,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -35,7 +36,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 		{ name: "Events Overview", icon: Calendar, href: "/dashboard/events" },
 		{ name: "Historical Actors", icon: Users, href: "/dashboard/actors" },
 		{ name: "Locations", icon: MapPin, href: "/dashboard/locations" },
-		{ name: "Sources & Media", icon: FileText, href: "/dashboard/sources" }, // Combined sources and media
+		{ name: "Sources", icon: FileText, href: "/dashboard/sources" }, // Combined sources and media
+
+		{ name: "Media", icon: Image, href: "/dashboard/media" }, // Combined sources and media
 
 		{ name: "Storage Management", icon: Database, href: "/dashboard/storage" }, // Combined sources and media
 		{
@@ -48,11 +51,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
 		{ name: "Reward Boxes", icon: Box, href: "/dashboard/reward-boxes" },
 
-		{
-			name: "Challanges",
-			icon: StopCircleIcon,
-			href: "/dashboard/reward-boxes",
-		},
 		{
 			name: "Achievements",
 			icon: Star,
@@ -98,8 +96,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 										variant={isActive ? "default" : "ghost"}
 										className={`w-full justify-start gap-3 ${
 											isActive
-												? "bg-sidebar-primary text-sidebar-primary-foreground"
-												: "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+												? " bg-background  text-secondary-foreground hover:bg-secondary"
+												: "text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground"
 										}`}
 									>
 										<item.icon className="h-4 w-4" />

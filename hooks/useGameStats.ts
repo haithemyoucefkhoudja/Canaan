@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/supabase";
 import { toast } from "sonner";
-import { UserGameStats } from "@/types/database.types";
+import { UserGameStats } from "@prisma/client";
 
 const gameStatsKey = "gameStats";
 const userAchievementsKey = "userAchievements";

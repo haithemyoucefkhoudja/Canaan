@@ -41,37 +41,26 @@ export async function middleware(request: NextRequest) {
 			// check token expiration
 
 			const user = await getUser(decodedToken.uid);
-			if (request.nextUrl.pathname === "/api/custom-claims" && user) {
-				const claims = {
-					app_role: "user",
-					role: "authenticated",
+			if (user && (!user.customClaims?.app_role || !user.customClaims?.role)) {
+				// 2. Preserve existing claims and only add what's missing.
+				// This prevents accidentally demoting an admin or other roles.
+				const existingClaims = user.customClaims || {};
+				const claimsToSet = {
+					...existingClaims,
+					app_role: existingClaims.app_role || "user",
+					role: existingClaims.role || "authenticated",
 				};
+
 				try {
-					await setCustomUserClaims(decodedToken.uid, claims);
-
-					const response = new NextResponse(
-						JSON.stringify({
-							success: true,
-						}),
-						{
-							status: 200,
-							headers: { "content-type": "application/json" },
-						}
-					);
-
-					await refreshCookiesWithIdToken(
-						token,
-						request.headers,
-						request.cookies,
-						authConfig
-					);
-					return response;
+					// Use user.uid for consistency, assuming `user` is the decoded token object.
+					await setCustomUserClaims(user.uid, claimsToSet);
 				} catch (error: any) {
 					return new NextResponse(
 						JSON.stringify({
-							error: `Something wrong happened ${error.message}`,
-							sucess: false,
-						})
+							error: `Failed to set custom claims: ${error.message}`,
+							success: false, // Corrected typo
+						}),
+						{ status: 500 } // Use a 500 status for server errors
 					);
 				}
 			}

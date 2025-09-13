@@ -34,8 +34,8 @@ export async function updateSource(sourceId: string, sourceData: any) {
 }
 
 export async function deleteSource(sourceId: string) {
-	await supabase.from("source_links").delete().eq("sourceId", sourceId);
-
+	await supabase.from("source_links").delete().eq("source_id", sourceId);
+	await supabase.from("document").delete().eq("source_id", sourceId);
 	const { error } = await supabase.from("source").delete().eq("id", sourceId);
 	if (error) throw error;
 }

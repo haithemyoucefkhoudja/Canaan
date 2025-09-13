@@ -39,7 +39,7 @@ export async function createDocumentEmbedding(
 	});
 
 	// 3. Handle the response
-	const data = await response.json();
+	const data: any = await response.json();
 
 	if (!response.ok) {
 		// If the server returns an error (e.g., status 400 or 500),

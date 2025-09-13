@@ -1,1102 +1,770 @@
+"use client";
 import type React from "react";
 import { v4 as uuid } from "uuid";
-import { type UserChatRequestBody } from "@/ai";
-import type { Message, StoreMessageResponse } from "@/types/Message";
-import { TAttachment } from "@/types/attachment";
+import { handleChatRequestFront, type ChatRequestBody } from "@/ai";
+import type { StoreMessageResponse } from "@/types/Message";
+import { RemoteFileAttachment, ClientAttachment } from "@/types/attachment";
 import {
-  createContext,
-  useState,
-  useEffect,
-  useRef,
-  useContext,
-  type FC,
-  type ReactNode,
-  useCallback,
-  useMemo,
+	createContext,
+	useState,
+	useEffect,
+	useRef,
+	useContext,
+	type FC,
+	type ReactNode,
+	useCallback,
+	useMemo,
 } from "react";
-import type { Conversation } from "@/types/Conversation";
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { apiStoreMessage } from "@/db/api";
-import { editMessage, storeMessage } from "@/db/database";
+import {
+	createConversationDB,
+	editMessage,
+	InputUserMessage,
+	storeMessage,
+} from "@/lib/supabase";
 import { callWithRetry } from "@/lib";
-import delay from "@/lib/delay";
-import { readFileAsBase64 } from "@/lib/readFileAsBase64";
-import { HiddenMessage } from "@/types/Message";
-import { useInfiniteConversations } from "@/hooks/use-infinite-query";
+import { MessageExtra } from "@/types/Message";
 import { useQueryClient } from "@tanstack/react-query";
+import { Conversation } from "@prisma/client";
+import { useAuth } from "@/components/firebase-auth/AuthContext";
+
+import { supabase } from "@/lib/supabase/supabase";
+import { MessageContentText } from "@langchain/core/messages";
+// import { generateMessages } from "@/test-messages";
+import { toast } from "sonner";
+import { useAsyncRoutePush } from "@/hooks/use-async-push";
+import { ConversationType } from "@/types/Conversation";
+
+import { InputProvider } from "./input-provider";
+import { ConversationsProvider } from "./conversation-provider";
+import { SourceProvider } from "./source-provider";
+async function handleNewChat(id: string): Promise<Conversation> {
+	const newConversation = await createConversationDB({
+		title: "New Conversation",
+		userId: id,
+	});
+	return newConversation;
+}
 interface ChatContextValue {
-  messages: Message[];
-  lastMessage: HiddenMessage | null;
-  isLoading: {
-    state: boolean;
-    id: string | null;
-  };
-  error: string | null;
-  conversation: Conversation | null;
-  stopRef: React.MutableRefObject<boolean>;
-  stop: boolean;
-  setStop: React.Dispatch<React.SetStateAction<boolean>>;
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  setConversation: React.Dispatch<React.SetStateAction<Conversation | null>>;
-  setLastMessage: React.Dispatch<React.SetStateAction<HiddenMessage | null>>;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
-  rewrite: (
-    messageId: string,
-    searchMode: string,
-    emptyInput: () => void
-  ) => void;
-  newChatStarter: (emptyInput: () => void) => void;
-  handleFormSubmit: (
-    query: string,
-    attachments: TAttachment[],
-    searchMode: string,
-    emptyInput: () => void
-  ) => void;
-}
-interface ConversationsContextValue {
-  conversations: Conversation[];
-  fetchNextPage: () => void;
-  hasNextPage: boolean;
-  isLoading: boolean;
-  isError: boolean;
-  error: any;
-}
-interface AttachmentsContextValue {
-  attachments: TAttachment[];
-  handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  addAttachment: (attachment: TAttachment) => void;
-  removeAttachment: (attachmentId: string) => void;
-  clearAttachments: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-}
-interface InputContextValue {
-  input: string;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
-  emptyInput: () => void;
-}
-interface SearchModeContextValue {
-  searchMode: string;
-  setSearchMode: React.Dispatch<React.SetStateAction<string>>;
+	messages: MessageExtra[];
+	isLoading: {
+		state: boolean;
+		id: string | null;
+	};
+	error: string | null;
+	conversation: ConversationType | null;
+	stop: boolean;
+	isNewChat: boolean;
+	setStop: React.Dispatch<React.SetStateAction<boolean>>;
+	setMessages: React.Dispatch<React.SetStateAction<MessageExtra[]>>;
+	setConversation: React.Dispatch<
+		React.SetStateAction<ConversationType | null>
+	>;
+	setError: React.Dispatch<React.SetStateAction<string | null>>;
+	setIsNewChat: React.Dispatch<React.SetStateAction<boolean>>;
+	rewrite: (
+		messageId: string,
+		searchMode: string,
+		emptyInput: () => void
+	) => void;
+	newChatStarter: (emptyInput: () => void) => void;
+	handleFormSubmit: (
+		query: string,
+		attachments: ClientAttachment[],
+		searchMode: string,
+		emptyInput: () => void
+	) => void;
 }
 
 const MAX_RETRIES = 3;
-const ConversationsContext = createContext<ConversationsContextValue>({
-  conversations: [],
-  fetchNextPage: () => {},
-  hasNextPage: false,
-  isLoading: false,
-  isError: false,
-  error: null,
-});
-const ConversationsProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isLoading,
-    isError,
-    error: ErrorConversation,
-  } = useInfiniteConversations();
-  const conversations = data?.pages.flat() || [];
 
-  const conversationsContextValue = useMemo<ConversationsContextValue>(() => {
-    return {
-      conversations,
-      fetchNextPage,
-      hasNextPage,
-      isLoading,
-      isError,
-      error: ErrorConversation,
-    };
-  }, [
-    conversations,
-    fetchNextPage,
-    hasNextPage,
-    isLoading,
-    isError,
-    ErrorConversation,
-  ]);
-  return (
-    <ConversationsContext.Provider value={conversationsContextValue}>
-      {children}
-    </ConversationsContext.Provider>
-  );
-};
-
-const InputProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [input, setInput] = useState("");
-  const [searchMode, setSearchMode] = useState("webSearch");
-  const [attachments, setAttachments] = useState<TAttachment[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const emptyInput = useMemo(() => {
-    return () => {
-      setInput("");
-      setAttachments([]);
-    };
-  }, []);
-  // useEffect(() => {
-  //   console.log("attachments:", attachments);
-  // }, [attachments]);
-
-  const addAttachment = useCallback(
-    (attachment: TAttachment) => {
-      if (!attachment) return;
-
-      setAttachments((prev) => {
-        const newItem: TAttachment = attachment;
-
-        let newItems = [];
-        console.log("prev:", prev);
-        if (prev)
-          newItems = [
-            newItem,
-            ...prev.filter((item) => item.id !== attachment.id),
-          ];
-        else {
-          newItems = [newItem];
-        }
-        return newItems;
-      });
-    },
-    [attachments]
-  );
-  const removeAttachment = useCallback((attachmentId: string) => {
-    setAttachments((prev) => {
-      const newItems = [...prev];
-      newItems.splice(
-        newItems.findIndex((item) => item.id === attachmentId),
-        1
-      );
-      return newItems;
-    });
-  }, []);
-  const clearAttachments = useCallback(() => {
-    setAttachments([]);
-  }, []);
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const newFiles = Array.from(event.target.files);
-      newFiles.map((file) => {
-        if (file.type.startsWith("image/")) {
-          readFileAsBase64(file).then((base64: string) => {
-            const item: TAttachment = {
-              id: `${file.name}-${file.lastModified}-${
-                file.size
-              }-${Math.random().toString(36).substring(7)}`,
-              metadata: {
-                name: file.name,
-                type: file.type,
-                size: file.size,
-                lastModified: file.lastModified,
-              },
-              type: "image",
-              text: file.name,
-              base64: `data:${file.type};base64,${base64}`,
-            };
-            addAttachment(item);
-          });
-        }
-      });
-      event.target.value = "";
-    }
-  };
-  const attachmentsContextValue = useMemo<AttachmentsContextValue>(() => {
-    return {
-      attachments,
-      fileInputRef,
-      addAttachment,
-      removeAttachment,
-      clearAttachments,
-      handleFileChange,
-    };
-  }, [
-    attachments,
-    addAttachment,
-    removeAttachment,
-    clearAttachments,
-    handleFileChange,
-  ]);
-  const inputContextValue = useMemo<InputContextValue>(() => {
-    return {
-      input,
-      setInput,
-      emptyInput,
-    };
-  }, [input, setInput, emptyInput]);
-  const searchModeContextValue = useMemo<SearchModeContextValue>(() => {
-    return {
-      searchMode,
-      setSearchMode,
-    };
-  }, [searchMode, setSearchMode]);
-  return (
-    <InputContext.Provider value={inputContextValue}>
-      <AttachmentsContext.Provider value={attachmentsContextValue}>
-        <SearchModeContext.Provider value={searchModeContextValue}>
-          {children}
-        </SearchModeContext.Provider>
-      </AttachmentsContext.Provider>
-    </InputContext.Provider>
-  );
-};
 // Helper functions moved outside component to avoid recreation on each render
 const ChatContext = createContext<ChatContextValue | undefined>(undefined);
-const InputContext = createContext<InputContextValue | undefined>(undefined);
-const AttachmentsContext = createContext<AttachmentsContextValue | undefined>(
-  undefined
-);
-const SearchModeContext = createContext<SearchModeContextValue | undefined>(
-  undefined
-);
-const lastMessagePlaceholder = {
-  content: `lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit
-  lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit
-  lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit
-  lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit lorum ipsum dolor sit amet consectetur adipiscing elit
-  `,
-  role: "assistant" as const,
-  sources: [],
-  id: "",
-  timestamp: "",
-  isLoading: false,
-  suggestions: [],
-  hidden: false,
-};
+
 export const ChatProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  // State management
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [lastMessage, setLastMessage] = useState<HiddenMessage | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [stop, setStop] = useState(true);
+	// State management
+	const [isNewChat, setIsNewChat] = useState(false);
+	const { user } = useAuth();
+	if (!user) throw new Error("User not authenticated");
+	const [messages, setMessages] = useState<MessageExtra[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [stop, setStop] = useState(true);
+	const [remoteFilesAttachments, setRemoteFilesAttachements] = useState<
+		RemoteFileAttachment[]
+	>([]);
+	const push = useAsyncRoutePush();
 
-  const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [isLoading, setIsLoading] = useState<{
-    state: boolean;
-    id: string | null;
-  }>({
-    state: false,
-    id: null,
-  });
-  const stopRef = useRef(stop);
-  const OUTPUT_DELAY = 100;
-  const newChatStarter = (emptyInput: () => void) => {
-    ("newChatStarter");
-    setMessages([]);
-    setLastMessage(null);
-    setError(null);
-    setStop(true);
-    setConversation(null);
-    setIsLoading({ state: false, id: null });
-    emptyInput();
-  };
-  // Sync stopRef with stop state
-  useEffect(() => {
-    stopRef.current = stop;
-    if (stop) {
-      setIsLoading({ state: false, id: null });
-    }
-  }, [stop]);
-  // Handle window resizing
+	const [conversation, setConversation] = useState<ConversationType | null>(
+		null
+	);
+	const [isLoading, setIsLoading] = useState<{
+		state: boolean;
+		id: string | null;
+	}>({
+		state: false,
+		id: null,
+	});
+	const abortControllerRef = useRef<AbortController | null>(null);
 
-  const saveUserMessage = useCallback(
-    async (
-      input: string,
-      attachments: TAttachment[],
-      conversation?: Partial<Conversation> | null
-    ): Promise<{
-      res: StoreMessageResponse;
-      title: string;
-    }> => {
-      try {
-        // ('path:', await path.configDir());
-        // Initialize default values
-        const timestamp = new Date().toISOString();
-        let title = conversation?.title || "";
+	const newChatStarter = (emptyInput: () => void) => {
+		("newChatStarter");
+		setMessages([]);
+		setError(null);
+		setStop(true);
+		setConversation(null);
+		setIsLoading({ state: false, id: null });
+		emptyInput();
+	};
 
-        // If no conversation or no ID, we need to create a new conversation
-        const isNewConversation =
-          !conversation || !conversation.id || title.startsWith("Assistant");
+	// 5. This separate effect specifically watches the `stop` prop
+	useEffect(() => {
+		if (stop && abortControllerRef.current) {
+			console.log("Stop prop is true. Send Message requests...");
 
-        // Generate a title for new conversations
-        if (isNewConversation) {
-          try {
-            // Try to generate a title based on the input
-            title = await updateConversation({
-              query: input,
-              attachments,
-            });
-          } catch (error) {
-            // Fallback title if generation fails
-            console.error("Failed to generate title:", error);
-            title = `Chat ${new Date().toLocaleString()}`;
-          }
-        }
+			// Abort the ongoing requests
+			abortControllerRef.current.abort();
 
-        // Prepare conversation object
-        const conversationData = {
-          id: conversation?.id,
-          title: title,
-          timestamp: conversation?.timestamp || timestamp,
-        };
+			// You can also reset the loading state here if needed
+			setIsLoading({ state: false, id: null });
+		}
+	}, [stop]); // This effect only depends on the `stop` prop
 
-        // Store the message
-        const res = await apiStoreMessage(
-          {
-            id: "",
-            content: input,
-            role: "user",
-            timestamp,
-            conversation_id:
-              conversationData.id == -1 ? null : conversationData.id,
-            attachments,
-          },
-          title
-        );
-        if (isNewConversation) {
-          setConversation({
-            title: title,
-            timestamp,
-            id: res.conversation_id,
-          });
-        }
+	const saveUserMessage = useCallback(
+		async (
+			userMessage: InputUserMessage
+		): Promise<{
+			res: StoreMessageResponse;
+		}> => {
+			try {
+				// Store the MessageExtra
+				const res = await storeMessage(user.id, userMessage);
 
-        return {
-          res,
-          title,
-        };
-      } catch (error) {
-        console.error("Error saving user message:", error);
-        throw error;
-      }
-    },
-    [apiStoreMessage] // Removed setConversation since it's commented out
-  );
-  const updateConversation = async ({
-    query,
-    attachments,
-  }: {
-    query: string;
-    attachments: TAttachment[];
-  }) => {
-    let llm: BaseChatModel;
+				return {
+					res,
+				};
+			} catch (error) {
+				console.error("Error saving user MessageExtra:", error);
+				throw error;
+			}
+		},
+		[storeMessage] // Removed setConversation since it's commented out
+	);
+	const uploadAttachment = useCallback(
+		async (
+			file: File,
+			conversationId: string
+		): Promise<RemoteFileAttachment> => {
+			const fileExt = file.name.split(".").pop();
+			const fileName = `${Date.now()}-${Math.random()
+				.toString(36)
+				.substring(2)}.${fileExt}`;
+			const filePath = `ai/${conversationId}/${fileName}`;
 
-    if (chatModel.provider === "custom_openai") {
-      if (!chatModel.customOpenAIKey) {
-        throw new Error("Missing customOpenAIKey for custom_openai provider.");
-      }
-      if (!chatModel.customOpenAIBaseURL) {
-        throw new Error(
-          "Missing customOpenAIBaseURL for custom_openai provider."
-        );
-      }
+			const { data, error } = await supabase.storage
+				.from("canaan")
+				.upload(filePath, file, {
+					cacheControl: "3600",
+					upsert: false,
+				});
 
-      try {
-        llm = new ChatOpenAI({
-          modelName: chatModel.model,
-          openAIApiKey: chatModel.customOpenAIKey,
-          configuration: {
-            baseURL: chatModel.customOpenAIBaseURL,
-          },
-          temperature: 0,
-        }) as unknown as BaseChatModel;
-      } catch (error: any) {
-        throw new Error("Error initializing ChatOpenAI: " + error.message);
-      }
-    } else {
-      try {
-        llm = (await getChatModel(
-          chatModel.provider,
-          chatModel.apiKey,
-          chatModel.model
-        )) as BaseChatModel;
-        (llm as any).temperature = 0;
-      } catch (error: any) {
-        console.error("Error initializing chat model: " + error.message);
-        throw new Error("Error initializing chat model: " + error.message);
-      }
-    }
-    const prompt = `You are responsible for creating Title for the conversation.  given the first user message don't answer the question create general title based on user Input\n      UserMessage: \n      ${query}`;
-    try {
-      const stream = await llm.stream([
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...(attachments.map((item) => {
-              switch (item.type) {
-                case "image":
-                  return {
-                    type: "image_url",
-                    image_url: { url: item.base64 },
-                  };
-                case "text":
-                  return {
-                    type: "text",
-                    text: item.text,
-                  };
-                default:
-                  return {
-                    type: "text",
-                    text: "Unsupported attachment type",
-                  };
-              }
-            }) || []),
-          ],
-        },
-      ]);
-      let chunks = "";
-      let isFirst = true;
+			if (error) throw error;
 
-      for await (const chunk of stream) {
-        const llm_content = chunk.content as string;
-        if (!llm_content && !isFirst) {
-          break;
-        }
-        isFirst = false;
-        chunks += llm_content;
-        setConversation((prev) => prev && { ...prev, title: chunks });
-      }
+			const {
+				data: { publicUrl },
+			} = supabase.storage.from("canaan").getPublicUrl(filePath);
 
-      return chunks;
-    } catch (error: any) {
-      return query;
-    }
-  };
-  const queryClient = useQueryClient();
-  const invalidateConversations = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["conversations"],
-    });
-  };
-  const sendLLMMessage = async (
-    userMessageContent: string,
-    currentHistory: Message[],
-    attachments: TAttachment[],
-    searchMode: string,
-    emptyInput: () => void,
-    existingMessageId?: string
-  ) => {
-    ("sendLLMMessage");
-    const mode = existingMessageId ? "edit" : "new";
-    const optimisticAssistantId = existingMessageId || uuid(); // Use existing or new optimistic ID
-    // 1. Prepare User Content (including clipboard)
+			return {
+				id: crypto.randomUUID(),
+				url: publicUrl,
+				filename: file.name,
+				contentType: file.type,
+				size: file.size,
+			};
+		},
+		[supabase]
+	);
 
-    setIsLoading({ state: true, id: optimisticAssistantId });
-    setError(null); // Clear previous errors
-    setStop(false); // Allow streaming
+	const queryClient = useQueryClient();
+	const invalidateConversations = () => {
+		queryClient.invalidateQueries({
+			queryKey: ["conversations"],
+		});
+	};
+	const invalidateMessages = (conversationId: string) => {
+		queryClient.invalidateQueries({
+			queryKey: ["messages", conversationId],
+			refetchType: "none",
+		});
+	};
+	const updateConversation = useCallback(async () => {
+		abortControllerRef.current = new AbortController();
+		const signal = abortControllerRef.current.signal;
+		const conversationId = conversation!.id;
+		const trimmedHistory = messages.map((msg) => ({
+			role: msg.role.toLowerCase() as "user" | "assistant",
+			content: [...(msg.content as MessageContentText[])],
+		}));
+		const requestBody: ChatRequestBody = {
+			query: [
+				{
+					text: "Based on The conversation create a title for it",
+					type: "text",
+				},
+			],
+			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
+			attachments: remoteFilesAttachments,
+			task: "titleGenerator", // Using an existing task
+			signal,
+		};
 
-    let finalUserMessageId: string | null = null;
-    let conversationDetailsForAssistant = conversation;
+		const chatGenerator = handleChatRequestFront(requestBody);
 
-    // 2. Handle User Message (if "new" mode)
-    const optimisticUserMessageId = uuid();
-    const userMessage: Message = {
-      id: optimisticUserMessageId,
-      content: userMessageContent,
-      role: "user",
-      timestamp: new Date().toISOString(),
-      attachments,
-    };
-    if (mode === "new") {
-      setMessages((prev) => [...prev, userMessage]);
-    }
+		let accumulatedTitle = "";
+		try {
+			for await (const event of chatGenerator) {
+				if (event.type === "message") {
+					accumulatedTitle += event.data;
+					setConversation((prev) =>
+						prev ? { ...prev, title: accumulatedTitle } : null
+					);
+				} else if (event.type === "end") {
+					break;
+				} else if (event.type === "error") {
+					const errorMessage = "Failed to generate title:" + event.data;
+					throw new Error(errorMessage);
+				}
+			}
+		} catch (e: any) {
+			setError(e.message);
+			return;
+		}
 
-    // 3. Prepare History for LLM
-    // History should be based on the state *before* adding the new optimistic user message if applicable,
-    // or up to the point of rewrite.
-    const historyForLLM = currentHistory;
+		const newTitle = accumulatedTitle.replace(/"/g, "").trim();
 
-    const trimmedHistory = historyForLLM.map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content: [
-        {
-          type: "text",
-          text: msg.content,
-        },
-        ...(msg.attachments?.map((item) => {
-          switch (item.type) {
-            case "image":
-              return {
-                type: "image_url",
-                image_url: { url: item.base64 },
-              };
-            case "text":
-              return {
-                type: "text",
-                text: item.text,
-              };
-            default:
-              return {
-                type: "text",
-                text: "Unsupported attachment type",
-              };
-          }
-        }) || []),
-      ],
-    }));
+		if (newTitle) {
+			try {
+				const { error } = await supabase
+					.from("conversation")
+					.update({ title: newTitle })
+					.eq("id", conversationId);
 
-    // 4. Prepare Assistant Message (Optimistic Add or Find for Edit)
-    conversationDetailsForAssistant =
-      conversation && conversation.id
-        ? conversation
-        : {
-            id: -1,
-            title: `Assistant ${new Date().toISOString()}`,
-            timestamp: new Date().toISOString(),
-          };
-    setConversation(conversationDetailsForAssistant);
-    let assistantMessage: Message = {
-      id: optimisticAssistantId,
-      content: "",
-      role: "assistant",
-      sources: [],
-      isLoading: true,
-      timestamp: new Date().toISOString(),
-    };
+				if (error) throw error;
 
-    if (mode === "new") {
-      // Add optimistic assistant shell
-      setMessages((prev) => [...prev, assistantMessage]);
-    } else {
-      // For edit mode, update the existing message to clear content
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === optimisticAssistantId
-            ? {
-                ...m,
-                action: "Waiting...",
-                content: "",
-                sources: [],
-                reasoning: undefined,
-                isLoading: true,
-                timestamp: new Date().toISOString(),
-              }
-            : m
-        )
-      );
-      // Re-fetch the assistant message from state to ensure we're working with the latest version for updates
-      const existingMsg = messages.find((m) => m.id === optimisticAssistantId);
-      if (existingMsg)
-        assistantMessage = {
-          ...existingMsg,
-          action: "Waiting...",
-          content: "",
-          sources: [],
-          isLoading: true,
-          reasoning: undefined,
-          timestamp: new Date().toISOString(),
-        };
-    }
+				invalidateConversations();
+			} catch (error) {
+				console.error("Failed to update conversation title:", error);
+			}
+		}
+	}, [invalidateConversations, setConversation]);
 
-    // 5. Make API Call and Stream Response
-    const requestBody: UserChatRequestBody = {
-      query: userMessageContent,
-      history: trimmedHistory.map((msg) => [msg.role, msg.content]),
-      focusMode: searchMode,
-      optimizationMode: "balanced",
-      attachments: attachments,
-    };
+	useEffect(() => {
+		if (isNewChat && conversation && messages.length >= 2) {
+			console.log("🚀 ~ ChatProvider ~ updating conversation title");
+			updateConversation();
+			setIsNewChat(false); // Reset after updating
+		}
+	}, [isNewChat, conversation, messages.length, updateConversation]);
+	useEffect(() => {
+		if (conversation?.title == "New Conversation") {
+			setIsNewChat(true);
+		}
+	}, [conversation]);
+	useEffect(() => {
+		if (error) toast.error(error);
+	}, [error]);
+	const sendLLMMessage = async (
+		userMessageContent: MessageContentText[],
+		currentHistory: MessageExtra[],
+		attachments: (ClientAttachment | RemoteFileAttachment)[],
+		searchMode: string,
+		emptyInput: () => void,
+		conversationId: string,
+		existingMessageId?: string
+	) => {
+		("sendLLMMessage");
+		const mode = existingMessageId ? "edit" : "new";
+		const optimisticAssistantId = existingMessageId || uuid(); // Use existing or new optimistic ID
+		// 1. Prepare User Content (including clipboard)
 
-    const chatGenerator = handleChatRequest(requestBody);
+		setIsLoading({ state: true, id: optimisticAssistantId });
+		setError(null); // Clear previous errors
+		setStop(false); // Allow streaming
+		abortControllerRef.current = new AbortController();
+		const signal = abortControllerRef.current.signal;
 
-    let accumulatedContent = "";
-    let accumulatedSources: any[] = [];
-    let accumulatedReasoning = "";
-    let newAction = "";
-    try {
-      for await (const event of chatGenerator) {
-        if (stopRef.current) break;
-        let updateType = "";
-        let newContent = "";
-        let newReasoning = "";
+		let finalUserMessageId: string | null = null;
+		let messageAttachments: RemoteFileAttachment[] = [];
+		if (attachments && attachments.length > 0) {
+			messageAttachments = await Promise.all(
+				attachments.map(
+					(attachment: ClientAttachment | RemoteFileAttachment) => {
+						if (
+							(attachment as RemoteFileAttachment).url ||
+							(attachment as RemoteFileAttachment).filename ||
+							(attachment as RemoteFileAttachment).size ||
+							(attachment as RemoteFileAttachment).contentType
+						) {
+							return attachment as RemoteFileAttachment;
+						}
+						return uploadAttachment(
+							(attachment as ClientAttachment).file,
+							conversationId
+						);
+					}
+				)
+			);
+		}
+		setRemoteFilesAttachements(messageAttachments);
+		// 2. Handle User MessageExtra (if "new" mode)
+		const optimisticUserMessageId = uuid();
+		const userMessage: MessageExtra = {
+			id: optimisticUserMessageId,
+			created_at: new Date(),
+			updated_at: new Date(),
+			conversation_id: conversationId,
+			content: userMessageContent,
+			role: "USER",
+			attachments: messageAttachments,
+			sources: null,
+			reasoning: null,
+			suggestions: null,
+			index: messages.length + 1,
+		};
+		if (mode === "new") {
+			setMessages((prev) => [...prev, userMessage]);
+		}
 
-        if (event.type === "message") {
-          newAction = "Generating...";
-          newContent = event.data;
-          updateType = "content";
-        } else if (event.type === "sources") {
-          newAction = "Sources...";
-          accumulatedSources = event.data; // Assuming sources are replaced, not appended
-          updateType = "sources";
-        } else if (event.type === "reasoning") {
-          newAction = "Reasoning...";
-          newReasoning = event.data;
-          updateType = "reasoning";
-        } else if (event.type === "error") {
-          throw new Error(event.data); // Propagate error to catch block
-        } else if (event.type === "action") {
-          newAction = event.data;
-          updateType = "action";
-        }
-        switch (updateType) {
-          case "content":
-            for (let i = 0; i < newContent.length; i++) {
-              await delay(OUTPUT_DELAY);
-              accumulatedContent += newContent[i];
+		// 3. Prepare History for LLM
+		// History should be based on the state *before* adding the new optimistic user MessageExtra if applicable,
+		// or up to the point of rewrite.
 
-              setMessages((prevMsgs) =>
-                prevMsgs.map((m) =>
-                  m.id === optimisticAssistantId
-                    ? {
-                        ...m,
-                        content: accumulatedContent,
-                        sources: accumulatedSources,
-                        reasoning: accumulatedReasoning || undefined, // Keep undefined if empty
-                        isLoading: true,
-                        action: newAction,
-                      }
-                    : m
-                )
-              );
-              setLastMessage({
-                id: optimisticAssistantId,
-                content: accumulatedContent,
-                role: "assistant",
-                sources: accumulatedSources,
-                reasoning: accumulatedReasoning || undefined,
-                timestamp: new Date().toISOString(),
-                conversation_id: conversationDetailsForAssistant.id,
-                isLoading: true,
-                action: newAction,
-                hidden: false,
-              });
-            }
-            break;
-          case "reasoning":
-            for (let i = 0; i < newReasoning.length; i++) {
-              await delay(OUTPUT_DELAY);
-              accumulatedReasoning += newReasoning[i];
-              setMessages((prevMsgs) =>
-                prevMsgs.map((m) =>
-                  m.id === optimisticAssistantId
-                    ? {
-                        ...m,
-                        content: accumulatedContent,
-                        sources: accumulatedSources,
-                        reasoning: accumulatedReasoning || undefined, // Keep undefined if empty
-                        isLoading: true,
-                        action: newAction,
-                      }
-                    : m
-                )
-              );
-              setLastMessage({
-                id: optimisticAssistantId,
-                content: accumulatedContent,
-                role: "assistant",
-                sources: accumulatedSources,
-                reasoning: accumulatedReasoning || undefined,
-                timestamp: new Date().toISOString(),
-                conversation_id: conversationDetailsForAssistant.id,
-                isLoading: true,
-                action: newAction,
-                hidden: false,
-              });
-            }
-            break;
-          case "sources":
-            setMessages((prevMsgs) =>
-              prevMsgs.map((m) =>
-                m.id === optimisticAssistantId
-                  ? {
-                      ...m,
-                      content: accumulatedContent,
-                      sources: accumulatedSources,
-                      reasoning: accumulatedReasoning || undefined, // Keep undefined if empty
-                      isLoading: true,
-                      action: newAction,
-                    }
-                  : m
-              )
-            );
-            setLastMessage({
-              id: optimisticAssistantId,
-              content: accumulatedContent,
-              role: "assistant",
-              sources: accumulatedSources,
-              reasoning: accumulatedReasoning || undefined,
-              timestamp: new Date().toISOString(),
-              conversation_id: conversationDetailsForAssistant.id,
-              isLoading: true,
-              action: newAction,
-              hidden: false,
-            });
-            break;
-          case "action":
-            setMessages((prevMsgs) =>
-              prevMsgs.map((m) =>
-                m.id === optimisticAssistantId
-                  ? {
-                      ...m,
-                      content: accumulatedContent,
-                      sources: accumulatedSources,
-                      reasoning: accumulatedReasoning || undefined, // Keep undefined if empty
-                      isLoading: true,
-                      action: newAction,
-                    }
-                  : m
-              )
-            );
-            setLastMessage({
-              id: optimisticAssistantId,
-              content: accumulatedContent,
-              role: "assistant",
-              sources: accumulatedSources,
-              reasoning: accumulatedReasoning || undefined,
-              timestamp: new Date().toISOString(),
-              conversation_id: conversationDetailsForAssistant.id,
-              isLoading: true,
-              action: newAction,
-              hidden: false,
-            });
-            break;
-        }
-      }
+		const trimmedHistory = currentHistory.map((msg) => ({
+			role: msg.role.toLowerCase() as "user" | "assistant",
+			content: [
+				...(msg.content as MessageContentText[]),
+				...(messageAttachments.map((item) => {
+					return {
+						type: "image_url",
+						image_url: { url: item.url },
+					};
+				}) || []),
+			],
+		}));
 
-      if (stopRef.current && !accumulatedContent) {
-        // Ensure at least some content if stopped early
-        accumulatedContent += " ";
-        setMessages((prevMsgs) =>
-          prevMsgs.map((m) =>
-            m.id === optimisticAssistantId
-              ? { ...m, content: accumulatedContent }
-              : m
-          )
-        );
-      }
+		let assistantMessage: MessageExtra = {
+			content: [{ text: "", type: "text" }],
+			role: "ASSISTANT",
+			conversation_id: conversationId,
+			sources: [],
+			isLoading: true,
+			id: optimisticAssistantId,
+			attachments: null,
+			reasoning: null,
+			suggestions: null,
+			created_at: new Date(),
+			updated_at: new Date(),
+			index: messages.length + 2,
+		};
 
-      // 6. Finalize Assistant Message in DB
-      const finalAssistantMessageData: Message = {
-        id: "", // DB will assign
-        content: accumulatedContent,
-        action: "",
-        role: "assistant" as const,
-        timestamp: assistantMessage.timestamp, // Use initial timestamp or update to new Date().toISOString()
-        sources: accumulatedSources,
-        // suggestions: assistantMessage.suggestions, // Add if you have suggestions
-        // conversation_id: conversationDetailsForAssistant.id,
-        reasoning: accumulatedReasoning || undefined,
-        isLoading: false,
-      };
+		if (mode === "new") {
+			// Add optimistic assistant shell
+			setMessages((prev) => [...prev, assistantMessage]);
+		} else {
+			// For edit mode, update the existing MessageExtra to clear content
+			setMessages((prev) =>
+				prev.map((m) =>
+					m.id === optimisticAssistantId
+						? {
+								...m,
+								action: "Waiting...",
+								content: [{ text: "", type: "text" }],
+								sources: [],
+								reasoning: null,
+								isLoading: true,
+								timestamp: new Date().toISOString(),
+						  }
+						: m
+				)
+			);
+			// Re-fetch the assistant MessageExtra from state to ensure we're working with the latest version for updates
+			const existingMsg = messages.find((m) => m.id === optimisticAssistantId);
+			if (existingMsg)
+				assistantMessage = {
+					...existingMsg,
+					action: "Waiting...",
+					content: [{ text: "", type: "text" }],
+					sources: [],
+					isLoading: true,
+					reasoning: null,
+				};
+		}
 
-      let finalAssistantDbId: string = optimisticAssistantId;
+		// 5. Make API Call and Stream Response
+		const requestBody: ChatRequestBody = {
+			query: userMessageContent,
+			history: trimmedHistory.map((msg) => [msg.role, msg.content]),
+			attachments: messageAttachments,
+			task: "academicSearch",
+			signal: signal,
+		};
 
-      if (mode === "new") {
-        console.log(
-          "before-conversationDetailsForAssistant:",
-          conversationDetailsForAssistant
-        );
-        try {
-          const userSaveResult = await callWithRetry(
-            () =>
-              saveUserMessage(
-                userMessage.content,
-                attachments,
-                conversationDetailsForAssistant
-              ),
-            MAX_RETRIES
-          );
-          conversationDetailsForAssistant = {
-            title: userSaveResult.title,
-            id: userSaveResult.res.conversation_id,
-            timestamp: new Date().toISOString(),
-          } as Conversation;
-          console.log(
-            "conversationDetailsForAssistant:",
-            conversationDetailsForAssistant
-          );
-          invalidateConversations();
-          finalAssistantMessageData.conversation_id =
-            userSaveResult.res.conversation_id;
-          finalUserMessageId = String(userSaveResult.res.message_id);
+		const chatGenerator = handleChatRequestFront(requestBody);
 
-          // Update user message with final ID from DB
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === optimisticUserMessageId
-                ? { ...msg, id: finalUserMessageId! }
-                : msg
-            )
-          );
-        } catch (err: any) {
-          setError(`Failed to save user message: ${err.message}`);
-          setIsLoading({ state: false, id: null });
-          setStop(true);
-          // Optionally remove the optimistic user message or mark it as failed
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== optimisticUserMessageId)
-          );
-          return;
-        }
-        const storeRes = await callWithRetry(
-          () =>
-            storeMessage(
-              finalAssistantMessageData,
-              conversationDetailsForAssistant?.title
-            ),
-          MAX_RETRIES
-        );
-        if (typeof storeRes === "string") throw new Error(storeRes);
-        finalAssistantDbId = String((storeRes as any).message_id);
-      } else {
-        const editRes: string = await callWithRetry(
-          () =>
-            editMessage(
-              Number(optimisticAssistantId),
-              finalAssistantMessageData
-            ),
-          MAX_RETRIES
-        );
-        if (editRes !== "success") throw new Error(editRes);
-        // finalAssistantDbId remains optimisticAssistantId as it's an edit
-      }
+		let accumulatedContent = [{ text: "", type: "text" }];
+		let accumulatedSources: any[] = [];
+		let accumulatedReasoning = "";
+		let newAction = "";
+		try {
+			for await (const event of chatGenerator) {
+				let updateType = "";
+				let newContent = "";
+				let newReasoning = "";
 
-      // Update message in state with final DB ID (if new) and ensure all data is consistent
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === optimisticAssistantId
-            ? {
-                ...msg, // Spread existing fields first
-                id: finalAssistantDbId, // Update ID if it changed
-                content: accumulatedContent,
-                isLoading: false,
-                sources: accumulatedSources,
-                reasoning: accumulatedReasoning || undefined,
-                conversation_id: conversationDetailsForAssistant?.id,
-                timestamp: finalAssistantMessageData.timestamp, // Ensure timestamp is consistent
-                action: "",
-              }
-            : msg
-        )
-      );
-      setLastMessage({
-        id: finalAssistantDbId, // Update ID if it changed
-        content: accumulatedContent,
-        isLoading: false,
-        sources: accumulatedSources,
-        reasoning: accumulatedReasoning || undefined,
-        conversation_id: conversationDetailsForAssistant.id,
-        timestamp: finalAssistantMessageData.timestamp, // Ensure timestamp is consistent
-        role: "assistant" as const,
-        hidden: false,
-        action: "",
-      });
-    } catch (err: any) {
-      setError(`LLM processing error: ${err.message}`);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === optimisticAssistantId
-            ? {
-                ...msg, // Spread existing fields first
-                isLoading: false, // Update ID if it changed
-                action: "",
-              }
-            : msg
-        )
-      );
-      // If assistant message was optimistically added, consider removing or marking as error
-      // For simplicity here, we just show the error.
-    } finally {
-      // setIsLoading({ state: false, id: null });
-      emptyInput();
-      setStop(true);
-    }
-  };
-  const rewrite = async (
-    assistantMessageIdToRewrite: string,
-    searchMode: string,
-    emptyInput: () => void
-  ) => {
-    // Renamed for clarity
-    const messageIndex = messages.findIndex(
-      (msg) => msg.id === assistantMessageIdToRewrite
-    );
+				console.log("🚀 ~ sendLLMMessage ~ event:", event);
+				if (event.type === "message") {
+					newAction = "Generating...";
+					newContent = event.data;
+					accumulatedContent[0].text += newContent;
+					updateType = "content";
+				} else if (event.type === "sources") {
+					newAction = "Sources...";
+					const sourcesWithoutContent = event.data?.map((source: any) => {
+						const { pageContent, ...restOfSource } = source;
+						// Return the new object that only contains the rest of the properties
+						return restOfSource;
+					});
+					accumulatedSources = sourcesWithoutContent; // Assuming sources are replaced, not appended
 
-    if (messageIndex < 0) {
-      setError("Cannot rewrite: Original assistant message not found.");
-      setIsLoading({ state: false, id: null }); // Reset loading
-      setStop(true); // Ensure stop is true
-      return;
-    }
-    if (messages[messageIndex].role !== "assistant") {
-      setError("Cannot rewrite: Target message is not an assistant message.");
-      setIsLoading({ state: false, id: null });
-      setStop(true);
-      return;
-    }
+					updateType = "sources";
+				} else if (event.type === "reasoning") {
+					newAction = "Reasoning...";
+					newReasoning = event.data;
+					accumulatedReasoning += newReasoning;
+					updateType = "reasoning";
+				} else if (event.type === "error") {
+					throw new Error(event.data); // Propagate error to catch block
+				} else if (event.type === "action") {
+					newAction = event.data;
 
-    // The user message is typically the one *before* the assistant message
-    const userMessageIndex = messageIndex - 1;
-    if (userMessageIndex < 0 || messages[userMessageIndex].role !== "user") {
-      // This scenario is tricky: An assistant message without a preceding user message?
-      // This could happen if the very first message in the chat was an assistant greeting.
-      // How do you "rewrite" a greeting without user context?
-      // For now, let's assume a user message is required.
-      setError("Cannot rewrite: No preceding user message found for context.");
-      setIsLoading({ state: false, id: null });
-      setStop(true);
-      return;
-    }
+					updateType = "action";
+				}
+				setMessages((prevMsgs) =>
+					prevMsgs.map((m) =>
+						m.id === optimisticAssistantId
+							? {
+									...m,
+									content: accumulatedContent,
+									sources: accumulatedSources,
+									reasoning: accumulatedReasoning || null, // Keep null if empty
+									isLoading: true,
+									action: newAction,
+							  }
+							: m
+					)
+				);
+			}
 
-    const userQueryForRewrite = messages[userMessageIndex].content;
-    const userAttachments = messages[userMessageIndex].attachments || [];
-    // History should be all messages *plus* the userQueryForRewrite was originally sent
-    const historyForRewrite = messages.slice(0, userMessageIndex + 1);
+			if (!accumulatedContent) {
+				// Ensure at least some content if stopped early
+				accumulatedContent = [{ text: "No Response", type: "text" }];
+				setMessages((prevMsgs) =>
+					prevMsgs.map((m) =>
+						m.id === optimisticAssistantId
+							? { ...m, content: accumulatedContent }
+							: m
+					)
+				);
+			}
 
-    // initResponse(); // Handled by sendLLMMessage
+			console.log("🚀 ~ sendLLMMessage ~ messages.length:", messages.length);
+			// 6. Finalize Assistant MessageExtra in DB
+			const finalAssistantMessageData: MessageExtra = {
+				id: "", // DB will assign
+				content: accumulatedContent,
+				action: "",
+				role: "ASSISTANT" as const,
+				sources: accumulatedSources,
+				created_at: new Date(),
+				updated_at: new Date(),
+				suggestions: assistantMessage.suggestions || null,
+				conversation_id: conversationId,
+				reasoning: accumulatedReasoning || null,
+				attachments: null,
+				isLoading: false,
+				index: messages.length + 2,
+			};
 
-    try {
-      // Call sendLLMMessage in "edit" mode
-      await sendLLMMessage(
-        userQueryForRewrite,
-        historyForRewrite,
-        userAttachments,
-        searchMode,
-        emptyInput,
-        assistantMessageIdToRewrite
-      );
-    } catch (err: any) {
-      console.error("Error during rewrite operation:", err);
-      // sendLLMMessage should set the error in context.
-      // Ensure loading/stop states are reset if sendLLMMessage failed to do so.
-      setError(`Rewrite failed: ${err.message || "Unknown error"}`); // Potentially override if sendLLMMessage error isn't specific enough
-      setIsLoading({ state: false, id: null });
-      setStop(true);
-    }
-    // No finally needed here if sendLLMMessage handles its own finally for loading/stop
-  };
-  const handleFormSubmit = async (
-    query: string,
-    attachments: TAttachment[],
-    searchMode: string,
-    emptyInput: () => void
-  ) => {
-    if (!query.trim()) return;
+			if (mode === "new") {
+				try {
+					const userSaveResult = await callWithRetry(
+						() => saveUserMessage(userMessage),
+						MAX_RETRIES
+					);
+					invalidateConversations();
+					finalUserMessageId = String(userSaveResult.res.message_id);
 
-    try {
-      const history = messages;
-      let mutableInput = query;
-      const hasSuccessiveUserMessages =
-        history.length > 0 && history[history.length - 1].role === "user";
+					// Update user MessageExtra with final ID from DB
+					setMessages((prev) =>
+						prev.map((msg) =>
+							msg.id === optimisticUserMessageId
+								? { ...msg, id: finalUserMessageId! }
+								: msg
+						)
+					);
+				} catch (err: any) {
+					setError(`Failed to save user MessageExtra: ${err.MessageExtra}`);
+					setIsLoading({ state: false, id: null });
+					setStop(true);
+					// Optionally remove the optimistic user MessageExtra or mark it as failed
+					setMessages((prev) =>
+						prev.filter((msg) => msg.id !== optimisticUserMessageId)
+					);
+					return;
+				}
+				callWithRetry(
+					() =>
+						storeMessage(
+							user.id, // User ID
+							{
+								content: finalAssistantMessageData.content,
+								role: finalAssistantMessageData.role,
+								conversation_id: finalAssistantMessageData.conversation_id,
+								attachments: null,
+								reasoning: finalAssistantMessageData.reasoning || null,
+								sources: finalAssistantMessageData.sources || null,
+								suggestions: finalAssistantMessageData.suggestions || null,
+								index: finalAssistantMessageData.index,
+							}
+						),
+					MAX_RETRIES
+				);
+			} else {
+				callWithRetry(
+					() =>
+						editMessage(user.id, optimisticAssistantId, {
+							content: finalAssistantMessageData.content,
+							role: finalAssistantMessageData.role,
+							conversation_id: finalAssistantMessageData.conversation_id,
+							attachments: null,
+							reasoning: finalAssistantMessageData.reasoning || null,
+							sources: finalAssistantMessageData.sources || null,
+							suggestions: finalAssistantMessageData.suggestions || null,
+						}),
+					MAX_RETRIES
+				);
+				// finalAssistantDbId remains optimisticAssistantId as it's an edit
+			}
 
-      if (hasSuccessiveUserMessages) {
-        mutableInput = history[history.length - 1].content + "\n" + query;
-        history.pop();
-        setMessages(history);
-      }
-      await sendLLMMessage(
-        mutableInput,
-        history,
-        attachments,
-        searchMode,
-        emptyInput
-      );
-    } catch (error: any) {
-      if (typeof error === "string") {
-        setError(error);
-      } else {
-        setError(
-          error instanceof Error ? error.message : "Failed to process message"
-        );
-      }
-      console.error("Error-Container:", error);
-    } finally {
-      setIsLoading({ id: null, state: false });
-      // setInput("");
-      // clearAttachments();
-      setStop(true);
-    }
-  };
-  // Handle first render and auto-hide
+			// Update MessageExtra in state with final DB ID (if new) and ensure all data is consistent
+			setMessages((prev) =>
+				prev.map((msg) =>
+					msg.id === optimisticAssistantId
+						? {
+								...msg, // Spread existing fields first
+								content: accumulatedContent,
+								isLoading: false,
+								sources: accumulatedSources,
+								reasoning: accumulatedReasoning || null,
+								conversation_id: conversationId,
+								action: "",
+						  }
+						: msg
+				)
+			);
 
-  const toggleLastMessage = () => {
-    setLastMessage((prev) =>
-      prev
-        ? {
-            ...prev,
-            hidden: !prev.hidden,
-          }
-        : null
-    );
-  };
-  const contextValue = useMemo<ChatContextValue>(() => {
-    return {
-      stop,
-      setStop,
-      stopRef,
-      setMessages,
-      messages,
-      lastMessage,
-      isLoading,
-      error,
-      conversation,
-      handleFormSubmit,
-      rewrite,
-      setLastMessage,
-      toggleLastMessage,
-      setConversation,
-      setError,
-      newChatStarter,
-    };
-  }, [
-    stop,
-    setStop,
-    stopRef,
-    setMessages,
-    messages,
-    lastMessage,
-    isLoading,
-    error,
-    conversation,
-    handleFormSubmit,
-    rewrite,
-    setLastMessage,
-    setConversation,
-    setError,
-    newChatStarter,
-  ]);
-  return (
-    <ChatContext.Provider value={contextValue}>
-      <InputProvider>
-        <ConversationsProvider>{children}</ConversationsProvider>
-      </InputProvider>
-    </ChatContext.Provider>
-  );
+			invalidateMessages(conversationId);
+		} catch (err: any) {
+			setError(`LLM processing error: ${err.message}`);
+			setMessages((prev) =>
+				prev.map((msg) =>
+					msg.id === optimisticAssistantId
+						? {
+								...msg, // Spread existing fields first
+								isLoading: false, // Update ID if it changed
+								action: "",
+						  }
+						: msg
+				)
+			);
+			// If assistant MessageExtra was optimistically added, consider removing or marking as error
+			// For simplicity here, we just show the error.
+		} finally {
+			// setIsLoading({ state: false, id: null });
+			emptyInput();
+			setStop(true);
+		}
+	};
+	const rewrite = async (
+		assistantMessageIdToRewrite: string,
+		searchMode: string,
+		emptyInput: () => void
+	) => {
+		// Renamed for clarity
+		const messageIndex = messages.findIndex(
+			(msg) => msg.id === assistantMessageIdToRewrite
+		);
+
+		if (messageIndex < 0) {
+			setError("Cannot rewrite: Original assistant MessageExtra not found.");
+			setIsLoading({ state: false, id: null }); // Reset loading
+			setStop(true); // Ensure stop is true
+			return;
+		}
+		if (messages[messageIndex].role !== "ASSISTANT") {
+			setError(
+				"Cannot rewrite: Target MessageExtra is not an assistant MessageExtra."
+			);
+			setIsLoading({ state: false, id: null });
+			setStop(true);
+			return;
+		}
+
+		// The user MessageExtra is typically the one *before* the assistant MessageExtra
+		const userMessageIndex = messageIndex - 1;
+		if (userMessageIndex < 0 || messages[userMessageIndex].role !== "USER") {
+			// This scenario is tricky: An assistant MessageExtra without a preceding user MessageExtra?
+			// This could happen if the very first MessageExtra in the chat was an assistant greeting.
+			// How do you "rewrite" a greeting without user context?
+			// For now, let's assume a user MessageExtra is required.
+			setError(
+				"Cannot rewrite: No preceding user MessageExtra found for context."
+			);
+			setIsLoading({ state: false, id: null });
+			setStop(true);
+			return;
+		}
+
+		const userQueryForRewrite = messages[userMessageIndex].content;
+		const userAttachments = messages[userMessageIndex].attachments || [];
+		// History should be all messages *plus* the userQueryForRewrite was originally sent
+		const historyForRewrite = messages.slice(0, userMessageIndex + 1);
+
+		// initResponse(); // Handled by sendLLMMessage
+
+		try {
+			// Call sendLLMMessage in "edit" mode
+			await sendLLMMessage(
+				userQueryForRewrite as any, //////
+				historyForRewrite,
+				userAttachments as any,
+				searchMode,
+				emptyInput,
+				conversation!.id,
+				assistantMessageIdToRewrite
+			);
+		} catch (err: any) {
+			console.error("Error during rewrite operation:", err);
+			// sendLLMMessage should set the error in context.
+			// Ensure loading/stop states are reset if sendLLMMessage failed to do so.
+			setError(`Rewrite failed: ${err.MessageExtra || "Unknown error"}`); // Potentially override if sendLLMMessage error isn't specific enough
+			setIsLoading({ state: false, id: null });
+			setStop(true);
+		}
+		// No finally needed here if sendLLMMessage handles its own finally for loading/stop
+	};
+	const handleFormSubmit = async (
+		query: string,
+		attachments: ClientAttachment[],
+		searchMode: string,
+		emptyInput: () => void
+	) => {
+		if (!query.trim()) return;
+
+		let activeConversation = conversation || null;
+		if (messages.length === 0) {
+			activeConversation = await handleNewChat(user!.id);
+			setConversation(activeConversation);
+			setIsNewChat(true); // Mark as new chat for title generation
+			await push(`/agent/${activeConversation.id}`);
+		}
+		if (!activeConversation) {
+			return;
+		}
+
+		try {
+			const history = messages;
+			let mutableInput = [
+				{ text: query, type: "text" },
+			] as Array<MessageContentText>;
+			const hasSuccessiveUserMessages =
+				history.length > 0 && history[history.length - 1].role === "USER";
+			if (hasSuccessiveUserMessages) {
+				const userMessage = history[history.length - 1].content as Array<any>;
+				mutableInput = [...userMessage, { type: "text", content: query }];
+				history.pop();
+				setMessages(history);
+			}
+			await sendLLMMessage(
+				mutableInput,
+				history,
+				attachments,
+				searchMode,
+				emptyInput,
+				activeConversation.id
+			);
+		} catch (error: any) {
+			if (typeof error === "string") {
+				setError(error);
+			} else {
+				setError(
+					error instanceof Error ? error.message : "Failed to process message"
+				);
+			}
+			console.error("Error-Container:", error);
+		} finally {
+			setIsLoading({ id: null, state: false });
+			// setInput("");
+			// clearAttachments();
+			setStop(true);
+		}
+	};
+	const contextValue = useMemo<ChatContextValue>(() => {
+		return {
+			isNewChat,
+			setIsNewChat,
+			stop,
+			setStop,
+			setMessages,
+			messages,
+			isLoading,
+			error,
+			conversation,
+			handleFormSubmit,
+			rewrite,
+			setConversation,
+			setError,
+			newChatStarter,
+		};
+	}, [
+		stop,
+		setStop,
+		setMessages,
+		messages,
+		isLoading,
+		error,
+		conversation,
+		handleFormSubmit,
+		rewrite,
+		setConversation,
+		setError,
+		newChatStarter,
+	]);
+	return (
+		<ChatContext.Provider value={contextValue}>
+			<InputProvider>
+				<ConversationsProvider>
+					<SourceProvider>{children}</SourceProvider>
+				</ConversationsProvider>
+			</InputProvider>
+		</ChatContext.Provider>
+	);
 };
 // Helper function for handling chat requests without port
 export const useChat = (): ChatContextValue => {
-  const context = useContext(ChatContext);
-  if (context === undefined) {
-    throw new Error("useChat must be used within a ChatProvider");
-  }
-  return context;
+	const context = useContext(ChatContext);
+	if (context === undefined) {
+		throw new Error("useChat must be used within a ChatProvider");
+	}
+	return context;
 };
-export const useInput = (): InputContextValue => {
-  const context = useContext(InputContext);
-  if (context === undefined) {
-    throw new Error("useInput must be used within a ChatProvider");
-  }
-  return context;
-};
-export const useAttachments = (): AttachmentsContextValue => {
-  const context = useContext(AttachmentsContext);
-  if (context === undefined) {
-    throw new Error("useAttachments must be used within a ChatProvider");
-  }
-  return context;
-};
-export const useSearchMode = (): SearchModeContextValue => {
-  const context = useContext(SearchModeContext);
-  if (context === undefined) {
-    throw new Error("useSearchMode must be used within a ChatProvider");
-  }
-  return context;
-};
-export const useConversations = (): ConversationsContextValue => {
-  const context = useContext(ConversationsContext);
-  if (context === undefined) {
-    throw new Error("useConversations must be used within a ChatProvider");
-  }
-  return context;
-};
+
 export default ChatProvider;
