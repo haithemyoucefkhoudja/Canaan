@@ -32,20 +32,29 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Error as ErrorComponent } from "../error-handlers";
 import { Loader } from "../ui/loader";
-import { Trophy, Target, CheckCircle, Network, Shield } from "lucide-react";
+import {
+	Trophy,
+	Target,
+	CheckCircle,
+	Network,
+	Shield,
+	Heart,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUserGameStats } from "@/providers/user-game-stats-provider";
 
 const nodeTypes = { quiz: QuizNode };
 
 export function MindMapQuiz({ gameMode = "single" }) {
 	const { user } = useAuth();
+	const { refetchStats, canPlay } = useUserGameStats();
+
 	const {
 		data: gameRecord,
 		isLoading: isGameLoading,
 		isError: isGameError,
 		error: gameError,
-		refetch: fetchNextGame,
 	} = useRandomGame("quiz");
 	const {
 		status,
@@ -59,7 +68,17 @@ export function MindMapQuiz({ gameMode = "single" }) {
 	} = useGameProgress();
 	const { mutate: submitResult, isPending: isSaving } = useSubmitGameResult();
 	const queryClient = useQueryClient(); // <-- 2. GET AN INSTANCE OF THE QUERY CLIENT
-
+	if (!canPlay) {
+		return (
+			<div className="flex flex-col items-center justify-center h-screen text-center">
+				<Heart className="w-16 h-16 mb-4 text-red-500/50" />
+				<h2 className="text-2xl font-bold">Out of Hearts!</h2>
+				<p className="text-muted-foreground">
+					Please wait for your hearts to regenerate to play again.
+				</p>
+			</div>
+		);
+	}
 	// --- LOCAL UI & REACTFLOW STATE ---
 	const [nodes, setNodes, onNodesChange] = useNodesState([]);
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -230,9 +249,6 @@ export function MindMapQuiz({ gameMode = "single" }) {
 		status,
 		endGame,
 	]);
-	useEffect(() => {
-		console.log("🚀 ~ MindMapQuiz ~ gameRecord:", gameRecord);
-	}, [gameRecord]);
 
 	const proceedToNextLevel = useCallback(() => {
 		setShowAchievementModal(false);
@@ -261,6 +277,8 @@ export function MindMapQuiz({ gameMode = "single" }) {
 					// No achievements, but we want the user to see their score before moving on.
 					// The ResultCard will now have a button that calls proceedToNextLevel.
 				}
+				refetchStats();
+
 				setNodes([]);
 				setEdges([]);
 			},
