@@ -1,9 +1,4 @@
-import {
-	GameConfig,
-	GameState,
-	GameProgressContextType,
-} from "@/types/gamification";
-import { GameResult } from "@prisma/client";
+"use client";
 import React, {
 	createContext,
 	useContext,
@@ -11,157 +6,164 @@ import React, {
 	ReactNode,
 	useCallback,
 } from "react";
+import { JsonValue } from "@prisma/client/runtime/library";
+import { GameResult } from "@prisma/client";
 
-// Define the initial configuration for a game
-const initialGameConfig: GameConfig = {
-	userId: "user-simulated-id",
-	gameType: "Bingo",
-	level: 5,
-	winConditionScore: 500,
-	mockCharacterPlacements: 1,
+// Define the shape of the data the client sends to the server
+export type UserInputPayload = Omit<GameResult, "id" | "played_at">;
+
+// Define the shape of the data the server calculates and returns
+export type DbResultPayload = {
+	points: number;
+	is_win: boolean;
 };
 
-// Define the initial state for the game progress
-const initialState: GameState = {
-	status: "idle",
-	score: 0,
-	startTime: null,
-	correctAnswers: 0,
-	totalQuestions: 0,
-	combo: 0,
-	maxCombo: 0,
-	gameResult: null,
-	gameConfig: initialGameConfig,
+// The combined state object for a completed game
+export type CompletedGameResult = {
+	userInput: UserInputPayload;
+	dbResult: DbResultPayload | null; // Null until the server responds
 };
 
-// Define actions for the reducer
+// The state managed by our reducer
+type GameProgressState = {
+	status: "idle" | "playing" | "finished";
+	startTime: number | null;
+	userInput: Partial<UserInputPayload>; // Build the user input piece by piece
+	dbResult: DbResultPayload | null;
+};
+
+// Payload to start a game
+type StartGamePayload = {
+	userId: string;
+	gameType: string;
+	firstAttempt: boolean;
+	extra?: JsonValue;
+};
+
+// Actions for the reducer
 type Action =
-	| { type: "START_GAME" }
+	| { type: "START_GAME"; payload: StartGamePayload }
 	| { type: "ANSWER_QUESTION"; payload: { isCorrect: boolean } }
 	| { type: "END_GAME" }
-	| { type: "RESET_GAME" }
-	| { type: "UPDATE_CONFIG"; payload: Partial<GameConfig> };
+	| { type: "SET_DB_RESULT"; payload: DbResultPayload }
+	| { type: "RESET_GAME" };
+
+// The initial state for the game progress
+const initialState: GameProgressState = {
+	status: "idle",
+	startTime: null,
+	userInput: {},
+	dbResult: null,
+};
 
 // The reducer function to manage game state
-const gameProgressReducer = (state: GameState, action: Action): GameState => {
+const gameProgressReducer = (
+	state: GameProgressState,
+	action: Action
+): GameProgressState => {
 	switch (action.type) {
-		case "START_GAME":
+		case "START_GAME": {
+			const { userId, gameType, firstAttempt, extra } = action.payload;
 			return {
-				...initialState,
-				gameConfig: state.gameConfig, // Persist config across resets
+				...initialState, // Fully reset
 				status: "playing",
 				startTime: Date.now(),
+				userInput: {
+					user_id: userId,
+					game_type: gameType,
+					first_attempt: firstAttempt,
+					extra: extra || {},
+					correct_answers: 0,
+					total_questions: 0,
+				},
 			};
+		}
 
 		case "ANSWER_QUESTION": {
+			if (state.status !== "playing") return state;
 			const { isCorrect } = action.payload;
-			const newCombo = isCorrect ? state.combo + 1 : 0;
-			const newScore = isCorrect
-				? state.score + 100 + newCombo * 10
-				: state.score;
-			const newCorrectAnswers = isCorrect
-				? state.correctAnswers + 1
-				: state.correctAnswers;
-
 			return {
 				...state,
-				score: newScore,
-				combo: newCombo,
-				maxCombo: Math.max(state.maxCombo, newCombo),
-				correctAnswers: newCorrectAnswers,
-				totalQuestions: state.totalQuestions + 1,
+				userInput: {
+					...state.userInput,
+					total_questions: (state.userInput.total_questions || 0) + 1,
+					correct_answers: isCorrect
+						? (state.userInput.correct_answers || 0) + 1
+						: state.userInput.correct_answers,
+				},
 			};
 		}
 
 		case "END_GAME": {
-			if (state.status !== "playing") return state;
-
-			const endTime = Date.now();
-			const timeSpent = Math.round((endTime - state.startTime!) / 1000);
-
-			const speedBonus = timeSpent < 60 ? 200 : 0;
-			const finalScore = state.score + speedBonus;
-
-			const finalGameResult: GameResult = {
-				id: crypto.randomUUID(),
-				// Use values from gameConfig state instead of hardcoded ones
-				user_id: state.gameConfig.userId,
-				game_type: state.gameConfig.gameType,
-				level: state.gameConfig.level,
-				base_points: state.score,
-				final_points: finalScore,
-				time_spent: timeSpent,
-				correct_answers: state.correctAnswers,
-				total_questions: state.totalQuestions,
-				is_win: finalScore > state.gameConfig.winConditionScore,
-				speed_bonus: speedBonus,
-				first_attempt_bonus: 0, // Not tracked in this simple simulation
-				played_at: new Date(),
-				extra: {
-					combo: state.maxCombo,
-					character_placements: state.gameConfig.mockCharacterPlacements,
-				},
-			};
-
+			if (state.status !== "playing" || !state.startTime) return state;
+			const timeSpent = Math.round((Date.now() - state.startTime) / 1000);
 			return {
 				...state,
 				status: "finished",
-				gameResult: finalGameResult,
+				userInput: {
+					...state.userInput,
+					time_spent: timeSpent,
+				},
+			};
+		}
+
+		case "SET_DB_RESULT": {
+			// After submission, store the server's calculated result
+			return {
+				...state,
+				dbResult: action.payload,
 			};
 		}
 
 		case "RESET_GAME":
-			return {
-				...initialState,
-				gameConfig: state.gameConfig, // Persist config so user doesn't have to re-enter it
-			};
-
-		case "UPDATE_CONFIG":
-			return {
-				...state,
-				gameConfig: {
-					...state.gameConfig,
-					...action.payload,
-				},
-			};
+			return initialState;
 
 		default:
 			return state;
 	}
 };
 
-// Create the context
+// The shape of the context provided to consuming components
+type GameProgressContextType = GameProgressState & {
+	startGame: (payload: StartGamePayload) => void;
+	answerQuestion: (payload: { isCorrect: boolean }) => void;
+	endGame: () => void;
+	setDbResult: (payload: DbResultPayload) => void;
+	resetGame: () => void;
+};
+
 const GameProgressContext = createContext<GameProgressContextType | undefined>(
 	undefined
 );
 
-// The provider component
 export const GameProgressProvider: React.FC<{ children: ReactNode }> = ({
 	children,
 }) => {
 	const [state, dispatch] = useReducer(gameProgressReducer, initialState);
 
-	const startGame = useCallback(() => dispatch({ type: "START_GAME" }), []);
+	const startGame = useCallback(
+		(payload: StartGamePayload) => dispatch({ type: "START_GAME", payload }),
+		[]
+	);
 	const answerQuestion = useCallback(
-		(isCorrect: boolean) =>
-			dispatch({ type: "ANSWER_QUESTION", payload: { isCorrect } }),
+		(payload: { isCorrect: boolean }) =>
+			dispatch({ type: "ANSWER_QUESTION", payload }),
 		[]
 	);
 	const endGame = useCallback(() => dispatch({ type: "END_GAME" }), []);
-	const resetGame = useCallback(() => dispatch({ type: "RESET_GAME" }), []);
-	const updateConfig = useCallback(
-		(newConfig: Partial<GameConfig>) =>
-			dispatch({ type: "UPDATE_CONFIG", payload: newConfig }),
+	const setDbResult = useCallback(
+		(payload: DbResultPayload) => dispatch({ type: "SET_DB_RESULT", payload }),
 		[]
 	);
+	const resetGame = useCallback(() => dispatch({ type: "RESET_GAME" }), []);
 
 	const contextValue: GameProgressContextType = {
 		...state,
 		startGame,
 		answerQuestion,
 		endGame,
+		setDbResult,
 		resetGame,
-		updateConfig,
 	};
 
 	return (
@@ -171,7 +173,6 @@ export const GameProgressProvider: React.FC<{ children: ReactNode }> = ({
 	);
 };
 
-// Custom hook to use the context
 export const useGameProgress = (): GameProgressContextType => {
 	const context = useContext(GameProgressContext);
 	if (context === undefined) {
