@@ -338,15 +338,15 @@ model UserAchievement {
 
 model GameResult {
   game_type           String   @default("Bingo")
-  level               Int
-  base_points         Int
-  final_points        Int
+  // level               Int
+  // base_points         Int
+  // final_points        Int
   time_spent          Int
   correct_answers     Int
   total_questions     Int
-  is_win              Boolean
-  speed_bonus         Int      @default(0)
-  first_attempt_bonus Int      @default(0)
+  // is_win              Boolean
+  // speed_bonus         Int      @default(0)
+  first_attempt    Boolean
   played_at           DateTime @default(now())
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id             String

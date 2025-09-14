@@ -53,8 +53,7 @@ export interface GameState {
 	startTime: number | null;
 	correctAnswers: number;
 	totalQuestions: number;
-	combo: number;
-	maxCombo: number;
+	extra: Record<string, any>;
 	gameResult: GameResult | null;
 	gameConfig: GameConfig;
 }

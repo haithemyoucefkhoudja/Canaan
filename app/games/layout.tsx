@@ -1,16 +1,16 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
+import { GameProgressProvider } from "@/providers/game-result-provider";
 
 export const metadata: Metadata = {
-	title: "Dashboard Historical Insights Dashboard",
+	title: "Games Hub",
 	description: "Manage complex historical data relationships and research",
 };
 
-export default function DashboardLayoutWrapper({
+export default function GamesLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	return <DashboardLayout>{children}</DashboardLayout>;
+	return <GameProgressProvider>{children}</GameProgressProvider>;
 }

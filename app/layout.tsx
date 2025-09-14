@@ -1,4 +1,3 @@
-import type React from "react";
 import type { Metadata } from "next";
 import { Work_Sans, Open_Sans } from "next/font/google";
 import "./globals.css";
