@@ -1,0 +1,5 @@
+{
+  "name": "Gaming Profile Page",
+  "description": "A modern, responsive user profile page for a gaming platform. Displays user stats, achievements, challenges, game history, and rewards. Built with React and Tailwind CSS.",
+  "requestFramePermissions": []
+}
