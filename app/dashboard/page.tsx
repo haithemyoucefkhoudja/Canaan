@@ -1,4 +1,3 @@
-import { AppSidebar } from "@/components/dashboard/si";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -17,7 +16,6 @@ import {
 export default function Page() {
 	return (
 		<SidebarProvider id="dashboard">
-			<AppSidebar />
 			<SidebarInset>
 				<header className="flex h-16 shrink-0 items-center gap-2 border-b">
 					<div className="flex items-center gap-2 px-3">
