@@ -20,9 +20,9 @@ model Event {
   actor_links    ActorLink[]
   source_events  EventRelationship[] @relation("SourceEvent")
   target_events  EventRelationship[] @relation("TargetEvent")
-  game           Game[]
   location_links LocationLink[]
   media_assets   MediaAsset[]
+  game        Game[]
   source_links   SourceLink[]
 
   @@map("event")
@@ -61,7 +61,7 @@ model Game {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   event_id   String   @db.Uuid
   type       String
-  game       Json
+  game Json
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
   event      Event    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -74,6 +74,7 @@ model Actor {
   name           String
   actor_type     String
   description    String
+  photo_url      String?
   birth_date     DateTime?
   death_date     DateTime?
   founded_date   DateTime?
@@ -81,7 +82,6 @@ model Actor {
   nationality    String?
   created_at     DateTime    @default(now())
   updated_at     DateTime    @default(now()) @updatedAt
-  photo_url      String?
   actor_links    ActorLink[]
 
   @@map("actor")
@@ -135,11 +135,11 @@ model Source {
   url          String
   author       String
   type         String
+  content  String         @default("(empty)")
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
   publish_date DateTime?    @db.Timestamptz(6)
   is_embedded  Boolean      @default(false)
-  content      String       @default("(empty)")
   documents    Document[]
   source_links SourceLink[]
 
@@ -174,18 +174,20 @@ model Document {
 }
 
 model User {
-  display_name  String
-  photo_url     String?
-  xp            Int               @default(0)
-  created_at    DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  email         String
-  id            String            @id
-  conversations Conversation[]
-  game_results  GameResult[]
-  achievements  UserAchievement[]
-  game_stats    UserGameStats[]
-  reward_boxes  UserRewardBox[]
+  display_name       String
+  photo_url          String?
+  xp                 Int                     @default(0)
+  created_at         DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+  email              String
+  id                 String                  @id
+  conversations      Conversation[]
+  game_results       GameResult[]
+  achievements       UserAchievement[]
+  // challenge_progress UserChallengeProgress[]
+  // daily_rewards      UserDailyReward[]
+  game_stats         UserGameStats[]
+  reward_boxes       UserRewardBox[]
 
   @@map("user")
 }
@@ -195,7 +197,7 @@ model Conversation {
   title      String
   is_public  Boolean   @default(false)
   created_at DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @default(now()) @db.Timestamptz(6)
   user_id    String
   user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   messages   Message[]
@@ -207,6 +209,7 @@ model Message {
   id              String       @id @default(dbgenerated("gen_random_uuid()"))
   content         Json
   role            Role
+  index           Int 
   created_at      DateTime     @default(now()) @db.Timestamptz(6)
   conversation_id String
   attachments     Json?
@@ -214,7 +217,6 @@ model Message {
   sources         Json?
   suggestions     Json?
   updated_at      DateTime     @default(now()) @updatedAt @db.Timestamptz(6)
-  index           Int
   conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
   @@map("message")
@@ -250,17 +252,18 @@ model UserGameStats {
 }
 
 model Achievement {
-  name         String                 @unique
-  description  String
-  icon         String
-  xp_bonus     Int                    @default(0)
-  criteria     Json
-  category     String                 @default("general")
-  created_at   DateTime               @default(now()) @db.Timestamptz(6)
-  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  updated_at   DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
-  reward_boxes AchievementRewardBox[]
-  users        UserAchievement[]
+  name              String                 @unique
+  description       String
+  icon              String
+  xp_bonus          Int                    @default(0)
+  criteria          Json
+  category          String                 @default("general")
+  created_at        DateTime               @default(now()) @db.Timestamptz(6)
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at        DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
+  reward_boxes      AchievementRewardBox[]
+  // challenge_rewards Challenge[]            @relation("ChallengeReward")
+  users             UserAchievement[]
 
   @@map("achievement")
 }
@@ -279,16 +282,17 @@ model Reward {
 }
 
 model RewardBox {
-  type         String
-  name         String
-  description  String
-  created_at   DateTime               @default(now()) @db.Timestamptz(6)
-  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  updated_at   DateTime               @default(now()) @updatedAt @db.Timestamptz(6)
-  icon         String
-  achievements AchievementRewardBox[]
-  rewards      RewardBoxReward[]
-  user_boxes   UserRewardBox[]
+  type                     String
+  name                     String
+  description              String
+  icon                     String
+  created_at               DateTime                @default(now()) @db.Timestamptz(6)
+  id                       String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at               DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+  achievements             AchievementRewardBox[]
+  // daily_reward_content_box DailyRewardContentBox[]
+  rewards                  RewardBoxReward[]
+  user_boxes               UserRewardBox[]
 
   @@map("reward_box")
 }
@@ -333,22 +337,100 @@ model UserAchievement {
 }
 
 model GameResult {
-  game_type       String   @default("Bingo")
-  time_spent      Int
-  correct_answers Int
-  total_questions Int
-  played_at       DateTime @default(now())
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id         String
-  extra           Json?
-  first_attempt   Boolean
-  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  game_type           String   @default("Bingo")
+  // level               Int
+  // base_points         Int
+  // final_points        Int
+  time_spent          Int
+  correct_answers     Int
+  total_questions     Int
+  // is_win              Boolean
+  // speed_bonus         Int      @default(0)
+  first_attempt    Boolean
+  played_at           DateTime @default(now())
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String
+  extra               Json?
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([game_type])
   @@index([played_at])
   @@map("game_result")
 }
+
+// model Challenge {
+//   name          String
+//   description   String
+//   type          String
+//   target        Int
+//   variant       String                  @default("static")
+//   date          DateTime?               @db.Date
+//   start_date    DateTime?               @db.Date
+//   end_date      DateTime?               @db.Date
+//   is_active     Boolean                 @default(true)
+//   created_at    DateTime                @default(now()) @db.Timestamptz(6)
+//   id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   reward_id     String                  @db.Uuid
+//   updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+//   reward        Achievement             @relation("ChallengeReward", fields: [reward_id], references: [id], onDelete: Cascade)
+//   user_progress UserChallengeProgress[]
+
+//   @@index([date])
+//   @@index([variant])
+//   @@index([start_date, end_date])
+//   @@index([is_active])
+//   @@map("challenge")
+// }
+
+// model UserChallengeProgress {
+//   progress     Int       @default(0)
+//   is_completed Boolean   @default(false)
+//   completed_at DateTime?
+//   user_id      String
+//   challenge_id String    @db.Uuid
+//   // challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+//   user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+//   @@id([user_id, challenge_id])
+//   @@index([challenge_id])
+//   @@map("user_challenge_progress")
+// }
+
+// model DailyReward {
+//   day           Int                     @unique
+//   other_rewards Json?
+//   created_at    DateTime                @default(now()) @db.Timestamptz(6)
+//   id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   updated_at    DateTime                @default(now()) @updatedAt @db.Timestamptz(6)
+//   reward_boxes  DailyRewardContentBox[]
+//   user_rewards  UserDailyReward[]
+
+//   @@map("daily_reward")
+// }
+
+// model DailyRewardContentBox {
+//   quantity        Int         @default(1)
+//   daily_reward_id String      @db.Uuid
+//   box_id          String      @db.Uuid
+//   reward_box      RewardBox   @relation(fields: [box_id], references: [id], onDelete: Cascade)
+//   // daily_reward    DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
+
+//   @@id([daily_reward_id, box_id])
+//   @@map("daily_reward_content_box")
+// }
+
+// model UserDailyReward {
+//   claimed_at      DateTime    @default(now())
+//   date            DateTime    @db.Date
+//   user_id         String
+//   daily_reward_id String      @db.Uuid
+//   // reward          DailyReward @relation(fields: [daily_reward_id], references: [id], onDelete: Cascade)
+//   user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+//   @@id([user_id, daily_reward_id, date])
+//   @@map("user_daily_reward")
+// }
 
 model UserRewardBox {
   is_opened Boolean   @default(false)
