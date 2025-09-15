@@ -1,7 +1,7 @@
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { UserProfile, Achievement, UserAchievement, UserChallengeProgress, GameResult } from './types';
-import { mockApi } from './services/geminiService';
+import { api } from './services/geminiService';
 import { SettingsIcon, icons } from './components/icons';
 
 // -- UI COMPONENTS (inspired by shadcn/ui) --
@@ -97,7 +97,7 @@ const ProfileHeader: React.FC<{ user: UserProfile['user']; stats: UserProfile['s
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border-t border-border">
                     <div className="bg-card p-4 text-center"><p className="text-xl font-bold">{timePlayed}h</p><p className="text-xs text-muted-foreground">Time Played</p></div>
                     <div className="bg-card p-4 text-center"><p className="text-xl font-bold">{stats.total_games_played}</p><p className="text-xs text-muted-foreground">Games Played</p></div>
-                    <div className="bg-card p-4 text-center"><p className="text-xl font-bold">{((stats.total_wins / stats.total_games_played) * 100).toFixed(1)}%</p><p className="text-xs text-muted-foreground">Win Rate</p></div>
+                    <div className="bg-card p-4 text-center"><p className="text-xl font-bold">{stats.total_games_played > 0 ? ((stats.total_wins / stats.total_games_played) * 100).toFixed(1) : 0}%</p><p className="text-xs text-muted-foreground">Win Rate</p></div>
                     <div className="bg-card p-4 text-center"><p className="text-xl font-bold">{stats.longest_win_streak}</p><p className="text-xs text-muted-foreground">Best Streak</p></div>
                 </div>
             </Card>
@@ -115,8 +115,6 @@ const ProfileHeader: React.FC<{ user: UserProfile['user']; stats: UserProfile['s
 const AchievementsSection: React.FC<{ achievements: UserProfile['achievements'] }> = ({ achievements }) => {
     const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
     
-    // FIX: Define a combined type for achievements to be displayed. This allows 'unlocked_at'
-    // to be optional, resolving TypeScript errors when accessing this property on locked achievements.
     type DisplayAchievement = Achievement & { unlocked_at?: string };
 
     const AchievementIcon = ({ name }: { name: string }) => {
@@ -248,7 +246,7 @@ const ProfilePageSkeleton: React.FC = () => (
             </div>
         </Card>
         <div className="flex items-center gap-2 border-b border-border mb-6">
-            <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
+             <Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" /><Skeleton className="h-10 w-24" />
         </div>
         <Card>
             <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
@@ -265,27 +263,30 @@ const ProfilePageSkeleton: React.FC = () => (
 // -- MAIN APP COMPONENT --
 
 const App: React.FC = () => {
-    const [profileData, setProfileData] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'profile' | 'achievements' | 'challenges' | 'history'>('profile');
-
-    useEffect(() => {
-        mockApi.fetchUserProfile()
-            .then(data => {
-                setProfileData(data);
-            })
-            .catch(() => {
-                setError("Failed to load user profile. Please try again later.");
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    }, []);
+    const { data: profileData, isLoading, isError, error } = useQuery<UserProfile, Error>({
+        queryKey: ['userProfile'],
+        queryFn: () => api.fetchUserProfile(),
+        retry: false, // Optional: disable retries for this demo
+    });
+    
+    const [activeTab, setActiveTab] = useState<'achievements' | 'challenges' | 'history'>('achievements');
 
     const renderContent = () => {
-        if (loading) return <ProfilePageSkeleton />;
-        if (error || !profileData) return <Card><CardContent><p className="text-destructive-foreground">{error}</p></CardContent></Card>;
+        if (isLoading) return <ProfilePageSkeleton />;
+
+        if (isError || !profileData) {
+          return (
+            <Card>
+              <CardHeader><h2 className="text-xl font-semibold text-destructive">Error Loading Profile</h2></CardHeader>
+              <CardContent>
+                <p className="text-destructive-foreground">Could not fetch your gaming profile. Please ensure you have replaced the placeholder Supabase credentials in <code>services/geminiService.ts</code> with your actual project URL and anon key.</p>
+                <pre className="mt-4 p-2 bg-secondary text-destructive-foreground/80 rounded-md text-xs whitespace-pre-wrap">
+                  {error?.message || 'An unknown error occurred.'}
+                </pre>
+              </CardContent>
+            </Card>
+          );
+        }
 
         return (
             <>
