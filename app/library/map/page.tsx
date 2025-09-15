@@ -1,3 +1,5 @@
+// app/library/map/page.tsx
+
 import { InteractiveHistoricalMap } from "@/components/interactive-historical-map";
 
 export default function MapsPage() {
