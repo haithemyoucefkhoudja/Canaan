@@ -26,7 +26,6 @@ import "@maplibre/maplibre-gl-leaflet";
 import { filterByDate } from "@openhistoricalmap/maplibre-gl-dates";
 import '@/app/games/game-styles.css';
 
-// --- Type Definitions ---
 interface PlayerState { id: string; score: number; }
 interface GameEvent { id: string; name: string; description?: string; }
 interface GameState { gameId: string; players: PlayerState[]; currentEventIndex: number; currentEvent?: GameEvent; roundStatus: "waiting" | "active" | "finished"; roundTimer: number; }
@@ -34,7 +33,6 @@ interface RoundResult { correctAnswer: { coordinates: [number, number]; year: nu
 interface GameOver { finalScores: Array<{id: string; score: number}>; }
 interface ComponentProps { gameId: string; gameType: 'map-game'; }
 
-// --- PlayerCard Sub-Component ---
 const PlayerCard = ({ player, isMe }: { player?: PlayerState, isMe: boolean }) => {
     const playerName = useMemo(() => {
         const historicalNames = ["Cleopatra", "Da Vinci", "Napoleon", "Joan of Arc", "Aristotle", "Newton"];
@@ -44,8 +42,8 @@ const PlayerCard = ({ player, isMe }: { player?: PlayerState, isMe: boolean }) =
     if (!player) {
         return (
             <div className="player-panel">
-                <div className="flex items-center justify-center p-4 bg-gray-100 border-2 border-dashed rounded-lg h-24">
-                    <p className="text-gray-500 font-semibold">Waiting for opponent...</p>
+                <div className="flex items-center justify-center p-4 bg-muted border-2 border-dashed rounded-lg h-24">
+                    <p className="text-muted-foreground font-semibold">Waiting for opponent...</p>
                 </div>
             </div>
         );
@@ -53,18 +51,18 @@ const PlayerCard = ({ player, isMe }: { player?: PlayerState, isMe: boolean }) =
 
     return (
         <div className="player-panel">
-            <div className="player-card-ui bg-yellow-50 shadow-md rounded-lg p-3 flex items-center transition-all duration-300 ease-in-out">
-                <div className="w-16 h-16 rounded-full bg-yellow-200 flex-shrink-0 mr-4 border-2 border-white shadow-inner flex items-center justify-center">
-                    <UserIcon size={32} className="text-yellow-600 opacity-80" />
+            <div className="player-card-ui bg-card shadow-md rounded-lg p-3 flex items-center transition-all duration-300 ease-in-out">
+                <div className="w-16 h-16 rounded-full bg-accent flex-shrink-0 mr-4 border-2 border-white shadow-inner flex items-center justify-center">
+                    <UserIcon size={32} className="text-accent-foreground opacity-80" />
                 </div>
                 <div className="flex-grow">
-                    <h3 className="font-bold text-lg text-gray-800 truncate">
-                        {playerName} {isMe && <span className="text-sm font-normal text-blue-600">(You)</span>}
+                    <h3 className="font-bold text-lg text-foreground truncate">
+                        {playerName} {isMe && <span className="text-sm font-normal text-primary">(You)</span>}
                     </h3>
                     <div className="player-stats mt-1">
-                        <Badge variant="secondary" className="bg-white">
-                            <Star className="w-4 h-4 mr-1.5 fill-yellow-400 text-yellow-500"/> 
-                            <span className="font-bold text-gray-700">{player.score} pts</span>
+                        <Badge variant="secondary" className="bg-background">
+                            <Star className="w-4 h-4 mr-1.5 text-star"/> 
+                            <span className="font-bold text-foreground">{player.score} pts</span>
                         </Badge>
                     </div>
                 </div>
@@ -92,7 +90,6 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
   useEffect(() => {
     if (!gameId || !gameType) return;
     
-    // --- FIX: Reverted to the direct WebSocket URL for local development ---
     const wsUrl = `ws://127.0.0.1:8787/game/${gameId}`;
     
     console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
@@ -150,21 +147,21 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
   
   useEffect(() => {
     if (gameState?.roundStatus === 'active' && !hasSubmitted && !answerMarkerRef.current && mapRef.current) {
-        const marker = L.marker(mapRef.current.getCenter(), { draggable: true, icon: L.divIcon({ className: 'w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg' }) }).addTo(mapRef.current);
+      const marker = L.marker(mapRef.current.getCenter(), { draggable: true, icon: L.divIcon({ className: 'draggable-map-marker bg-primary' }) }).addTo(mapRef.current);
         answerMarkerRef.current = marker;
     }
-  }, [gameState, hasSubmitted]);
+}, [gameState, hasSubmitted]);
   
   useEffect(() => {
     if (!roundResult || !mapRef.current || !resultMarkersRef.current) return;
     resultMarkersRef.current.clearLayers();
-    const correctIcon = L.divIcon({ className: `p-2 rounded-lg bg-green-500 text-white font-bold`, html: `✓ Correct Location` });
+    const correctIcon = L.divIcon({ className: `p-2 rounded-lg bg-chart-1 text-primary-foreground font-bold`, html: `✓ Correct Location` });
     L.marker(roundResult.correctAnswer.coordinates, { icon: correctIcon, zIndexOffset: 1000 }).addTo(resultMarkersRef.current);
     roundResult.playerResults.forEach((p) => {
       if (!p.answer) return;
       const isSelf = p.id === playerId;
       const scoreText = `+${p.scoreThisRound}pt`;
-      const playerIcon = L.divIcon({ className: `p-2 rounded-lg ${isSelf ? 'bg-blue-500' : 'bg-gray-500'} text-white font-bold`, html: `${p.id.substring(0,4)} ${scoreText}` });
+      const playerIcon = L.divIcon({ className: `p-2 rounded-lg ${isSelf ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'} font-bold`, html: `${p.id.substring(0,4)} ${scoreText}` });
       L.marker(p.answer.coordinates, { icon: playerIcon }).addTo(resultMarkersRef.current!);
     });
   }, [roundResult, playerId]);
@@ -181,7 +178,7 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
   const opponentState = gameState?.players.find(p => p.id !== playerId);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-gray-100 p-4">
+    <div className="flex flex-col h-screen w-full bg-background p-4">
       <Card className="border-2 shadow-xl mb-4">
         <CardHeader className="p-3">
           <CardTitle className="flex items-center justify-between text-xl">
@@ -202,7 +199,7 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
               <Card className="flex-grow border-2 shadow-2xl overflow-hidden">
                 <CardContent className="p-1 h-full">
                     <div ref={mapContainerRef} style={{ height: "100%", width: "100%" }} className="bg-muted rounded-md">
-                        {!mapReady && <div className="p-4 flex items-center justify-center h-full"><Compass className="animate-spin h-8 w-8" /></div>}
+                        {!mapReady && <div className="p-4 flex items-center justify-center h-full"><Compass className="animate-spin h-8 w-8 text-primary" /></div>}
                     </div>
                 </CardContent>
               </Card>
@@ -212,10 +209,10 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
                       {gameState?.roundStatus === 'active' && gameState.currentEvent ? (
                         <>
                           <h4 className="font-bold text-lg mb-1">{gameState.currentEvent.name}</h4>
-                          <p className="text-sm text-gray-600">{gameState.currentEvent.description}</p>
+                          <p className="text-sm text-muted-foreground">{gameState.currentEvent.description}</p>
                         </>
                       ) : (
-                         <div className="flex flex-col items-center justify-center text-gray-500">
+                         <div className="flex flex-col items-center justify-center text-muted-foreground">
                             <HelpCircle className="w-8 h-8 mb-2"/>
                             <p className="font-bold">
                               {gameState?.roundStatus === 'waiting' ? 'Waiting for game to start...' : 'Waiting for next event...'}
@@ -237,13 +234,60 @@ export function MultiplayerInteractiveHistoricalMap({ gameId, gameType }: Compon
           <PlayerCard player={opponentState} isMe={false} />
       </div>
 
-      {/* 
-        This is where you should later add your modals for round results and game over.
-        The previous syntax error was caused by empty JSX comments here.
-        For example:
-        {roundResult && <YourRoundResultComponent data={roundResult} />}
-        {gameOver && <YourGameOverComponent data={gameOver} />}
-      */}
+      {roundResult && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]">
+              <Card className="w-full max-w-lg m-4 text-center border-2 shadow-2xl animate-in fade-in-0 zoom-in-95">
+                  <CardHeader>
+                      <CardTitle className="text-3xl font-black">Round Over</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 px-6 pb-6">
+                      <div className="text-lg text-muted-foreground">
+                          Correct Answer Was: <strong>{roundResult.correctAnswer.year}</strong>
+                      </div>
+                      <div className="space-y-2">
+                          {roundResult.playerResults.map(p => (
+                              <div key={p.id} className="flex justify-between items-center p-2 bg-muted rounded-md">
+                                  <span className="font-bold">{p.id === playerId ? "You" : "Opponent"}</span>
+                                  <span className="font-bold text-primary">+{p.scoreThisRound} pts</span>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
+          </div>
+      )}
+
+      {gameOver && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]">
+              <Card className="w-full max-w-md m-4 text-center border-2 shadow-2xl animate-in fade-in-0 zoom-in-95">
+                  <CardHeader>
+                      {gameOver.finalScores.find(s => s.id === playerId)?.score ?? 0 > gameOver.finalScores.find(s => s.id !== playerId)?.score ?? 0 ? (
+                          <>
+                              <Trophy className="w-16 h-16 text-star mx-auto animate-bounce" />
+                              <CardTitle className="text-4xl font-black text-chart-1 mt-4">You Won!</CardTitle>
+                          </>
+                      ) : (
+                          <>
+                              <XCircle className="w-16 h-16 text-destructive mx-auto" />
+                              <CardTitle className="text-4xl font-black text-destructive mt-4">Game Over</CardTitle>
+                          </>
+                      )}
+                  </CardHeader>
+                  <CardContent className="space-y-6 px-8 pb-8">
+                      <div className="text-lg text-muted-foreground">Final Scores:</div>
+                      <div className="space-y-2">
+                          {gameOver.finalScores.map(p => (
+                              <div key={p.id} className="flex justify-between items-center p-3 bg-muted rounded-lg text-xl">
+                                  <span className="font-bold">{p.id === playerId ? "You" : "Opponent"}</span>
+                                  <span className="font-bold text-primary">{p.score} pts</span>
+                              </div>
+                          ))}
+                      </div>
+                      <Link href={`/`} className="w-full"><Button size="lg" className="w-full mt-4">Back to Lobby</Button></Link>
+                  </CardContent>
+              </Card>
+          </div>
+      )}
     </div>
   );
 }

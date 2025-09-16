@@ -21,19 +21,19 @@ export default function EventDetails({ event }: EventDetailsProps) {
         NEW: We make the card a flex column with a max height.
         This allows the content area to grow and become scrollable.
       */}
-			<Card className="bg-slate-950 border border-slate-800 flex flex-col max-h-[80vh]">
+			<Card className="bg-card border border-border flex flex-col max-h-[80vh]">
 				<CardHeader>
 					{event ? (
 						<>
-							<CardTitle className="text-2xl text-green-400">
+							<CardTitle className="text-2xl text-primary">
 								{event.name}
 							</CardTitle>
-							<CardDescription className="text-slate-400">
+							<CardDescription className="text-muted-foreground">
 								{new Date(event.start_date).toLocaleDateString()}
 							</CardDescription>
 						</>
 					) : (
-						<CardTitle className="text-slate-500">Select an Event</CardTitle>
+						<CardTitle className="text-muted-foreground">Select an Event</CardTitle>
 					)}
 				</CardHeader>
 
@@ -44,7 +44,7 @@ export default function EventDetails({ event }: EventDetailsProps) {
 					{event ? (
 						<RichTextReader content={event.description} />
 					) : (
-						<p className="text-center text-slate-600 pt-10">
+						<p className="text-center text-muted-foreground pt-10">
 							Click "Read more" on an event to see its full details here.
 						</p>
 					)}
