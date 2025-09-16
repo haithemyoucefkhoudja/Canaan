@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Event } from "@prisma/client";
 import { EventWLinks } from "@/types/events";
+import { RichTextReader } from "../text-editor/rich-text-reader";
 
 interface EventDetailProps {
 	event: EventWLinks;
@@ -64,7 +65,7 @@ export function EventDetail({ event, onEdit, onClose }: EventDetailProps) {
 					>
 						{parsedEvent.name}
 					</h2>
-					<p className="text-muted-foreground">{parsedEvent.description}</p>
+					<RichTextReader content={parsedEvent.description} />
 				</div>
 				<Button onClick={onEdit} className="gap-2">
 					<Edit className="h-4 w-4" />

@@ -7,7 +7,6 @@ import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Link } from "@tiptap/extension-link";
 import { Table } from "@tiptap/extension-table";
@@ -98,7 +97,6 @@ export function RichTextEditor({
 				placeholder,
 			}),
 			TextStyle,
-			Color,
 			Highlight.configure({
 				multicolor: true,
 			}),
@@ -611,39 +609,6 @@ export function RichTextEditor({
 					</div>
 
 					<Separator orientation="vertical" className="h-6" />
-
-					{/* Color Tools */}
-					<div className="flex items-center gap-1">
-						<div className="relative">
-							<input
-								type="color"
-								onInput={(event) =>
-									editor
-										.chain()
-										.focus()
-										.setColor((event.target as HTMLInputElement).value)
-										.run()
-								}
-								value={editor.getAttributes("textStyle").color || "#ffffff"}
-								className="w-9 h-9 rounded-md border border-border cursor-pointer bg-transparent"
-								title="Text Color"
-							/>
-						</div>
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => editor.chain().focus().toggleHighlight().run()}
-							className={cn(
-								"h-9 w-9 p-0 hover:bg-accent transition-colors",
-								editor.isActive("highlight") &&
-									"bg-primary text-primary-foreground"
-							)}
-							title="Highlight"
-						>
-							<Palette className="h-4 w-4" />
-						</Button>
-					</div>
 				</div>
 			</div>
 

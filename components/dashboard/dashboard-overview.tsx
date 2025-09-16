@@ -22,6 +22,7 @@ import {
 	Eye,
 } from "lucide-react";
 import { getDashboardStats, getEvents } from "@/lib/supabase";
+import { RichTextReader } from "../text-editor/rich-text-reader";
 
 export function DashboardOverview() {
 	const [stats, setStats] = useState({
@@ -93,6 +94,8 @@ export function DashboardOverview() {
 						<div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
 					))}
 				</div>
+
+				<div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 " />
 			</div>
 		);
 	}
@@ -190,9 +193,9 @@ export function DashboardOverview() {
 													: "Present"}
 											</div>
 										</div>
-										<p className="text-sm text-muted-foreground mb-3">
-											{event.description}
-										</p>
+										<RichTextReader
+											content={event.description}
+										></RichTextReader>
 										<div className="flex items-center gap-4 mb-3">
 											<div className="flex items-center gap-1 text-sm text-muted-foreground">
 												<MapPin className="h-3 w-3" />
