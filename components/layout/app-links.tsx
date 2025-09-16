@@ -28,7 +28,7 @@ export function AppLinks({
 				{collections.map((item, index) => (
 					<li key={`${item.handle}-${index}`}>
 						<Link
-							href={`/${item.handle}`}
+							href={`${item.handle}`}
 							prefetch
 							className="group block py-2 px-3 -mx-3 rounded-lg transition-all duration-200 hover:bg-accent/50 hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 						>

@@ -1,6 +1,5 @@
 import { LogoSvg } from "@/components/icons/logo-svg";
 import { AppLinks } from "./app-links";
-import { SidebarLinks } from "./sidebar/sidebar-links";
 
 export async function Footer({ collections }: { collections: any[] }) {
 	return (
@@ -19,11 +18,6 @@ export async function Footer({ collections }: { collections: any[] }) {
 					</span>
 				</div>
 				<div className="flex justify-between max-md:contents text-muted-foreground">
-					<SidebarLinks
-						className="max-w-[450px] w-full max-md:flex-col"
-						size="base"
-						invert
-					/>
 					<p className="text-base">
 						{new Date().getFullYear()}© — All rights reserved
 					</p>

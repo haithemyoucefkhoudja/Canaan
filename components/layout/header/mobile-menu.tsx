@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { SidebarLinks } from "../sidebar/sidebar-links";
 import { AppLinks } from "../app-links";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { Menu } from "lucide-react";
@@ -130,7 +129,6 @@ export default function MobileMenu({ collections }: MobileMenuProps) {
 										</div>
 									</div>
 								</div>
-								<SidebarLinks className="gap-2 w-full mt-auto" />
 							</div>
 						</motion.div>
 					</>
