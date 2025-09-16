@@ -29,7 +29,7 @@ export default function EventCard({
 		<div className="transform transition-transform duration-300 ease-in-out hover:scale-105">
 			<Card
 				className={`bg-slate-900 border-2 ${
-					isSelected ? "border-green-500" : "border-slate-800"
+					isSelected ? "border-border" : "border-border/65"
 				}`}
 			>
 				<CardHeader>
@@ -44,7 +44,7 @@ export default function EventCard({
 					<Button
 						onClick={() => onSelect(event)}
 						variant="outline"
-						className="w-full text-green-400 border-green-500 hover:bg-green-500 hover:text-slate-900"
+						className="w-full"
 					>
 						Read more
 					</Button>

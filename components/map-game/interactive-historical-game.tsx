@@ -109,8 +109,8 @@ export function InteractiveHistoricalMap({
     if (mapRef.current) {
         const marker = L.marker(mapRef.current.getCenter(), {
             draggable: true,
-            // --- Color Change: Marker color is now our primary teal ---
-            icon: L.divIcon({ className: 'w-6 h-6 bg-teal-500 rounded-full border-2 border-white shadow-lg cursor-move' })
+            // Change: Use the primary background color for the marker
+            icon: L.divIcon({ className: 'draggable-map-marker bg-primary' })
         }).addTo(mapRef.current);
         activeMarkerRef.current = marker;
     }
@@ -158,8 +158,8 @@ export function InteractiveHistoricalMap({
   const resetGame = () => window.location.reload();
 
   return (
-    // --- Color Change: Warmer page background ---
-    <div className="relative space-y-6 p-4 sm:p-6 bg-stone-100 min-h-screen">
+    // Change: Use the main background color for the page
+    <div className="relative space-y-6 p-4 sm:p-6 bg-background min-h-screen">
 
       <Card className="border-2 shadow-lg">
         <CardContent className="p-4 flex items-center justify-between">
@@ -168,8 +168,8 @@ export function InteractiveHistoricalMap({
               <Button variant="outline" size="icon" disabled={levelId <= 101}><ArrowLeft/></Button>
             </Link>
             <div className="text-center">
-              {/* Color Change */}
-              <div className="text-sm text-stone-500">Level</div>
+              {/* Change: Use muted foreground for secondary text */}
+              <div className="text-sm text-muted-foreground">Level</div>
               <div className="text-2xl font-bold">{levelId}</div>
             </div>
             <Link href={`/games/map/${levelId + 1}`}>
@@ -179,23 +179,24 @@ export function InteractiveHistoricalMap({
           
           <div className="flex-grow max-w-xs mx-4">
               <div className="flex justify-between mb-1">
-                  {/* Color Change */}
-                  <span className="text-base font-medium text-teal-800">Progress</span>
-                  <span className="text-sm font-medium text-teal-800">{completedEvents} / {totalEvents}</span>
+                  {/* Change: Use primary color for progress text */}
+                  <span className="text-base font-medium text-primary">Progress</span>
+                  <span className="text-sm font-medium text-primary">{completedEvents} / {totalEvents}</span>
               </div>
-              {/* Color Change */}
-              <div className="w-full bg-stone-200 rounded-full h-2.5">
-                  <div className="bg-teal-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+              {/* Change: Use muted for the progress bar background and primary for the fill */}
+              <div className="w-full bg-muted rounded-full h-2.5">
+                  <div className="bg-primary h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
               </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-                {/* Color Change */}
-                <div className="text-sm text-stone-500">Score</div>
-                <div className="text-2xl font-bold text-teal-800 flex items-center gap-2">
-                    {/* Color Change */}
-                    <Star className="w-6 h-6 text-amber-500"/>
+                {/* Change: Use muted foreground for secondary text */}
+                <div className="text-sm text-muted-foreground">Score</div>
+                {/* Change: Use primary for the score text */}
+                <div className="text-2xl font-bold text-primary flex items-center gap-2">
+                    {/* Change: Use a defined 'star' color for the icon */}
+                    <Star className="w-6 h-6 text-star"/>
                     {gameState.totalScore}
                 </div>
             </div>
@@ -209,8 +210,8 @@ export function InteractiveHistoricalMap({
                 <CardContent className="p-0">
                     <div className="relative h-[500px] lg:h-[620px] m-2 rounded-xl overflow-hidden border-4 shadow-inner">
                     <div ref={mapContainerRef} style={{ height: "100%", width: "100%" }} className="bg-muted">
-                        {/* Color Change */}
-                        {!mapReady && <div className="p-4 flex items-center justify-center h-full"><Compass className="animate-spin h-8 w-8 text-teal-700" /> <span className="ml-4 text-lg">Loading Map...</span></div>}
+                        {/* Change: Use primary color for loading text/icon */}
+                        {!mapReady && <div className="p-4 flex items-center justify-center h-full"><Compass className="animate-spin h-8 w-8 text-primary" /> <span className="ml-4 text-lg">Loading Map...</span></div>}
                     </div>
                     </div>
                 </CardContent>
@@ -220,23 +221,23 @@ export function InteractiveHistoricalMap({
         <div className="space-y-6">
             <Card className="border-2 shadow-xl">
             <CardHeader className="pb-2">
-                {/* Color Change */}
-                <CardTitle className="text-xl flex items-center gap-2"><MapPin className="h-5 w-5 text-teal-700" />Events to Place</CardTitle>
+                {/* Change: Use primary for the icon color */}
+                <CardTitle className="text-xl flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" />Events to Place</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 max-h-[450px] overflow-y-auto p-4">
                 {gameState.events.map((event) => {
                 const isSelected = event.id === selectedEventForPlacement?.id;
-                {/* Color Change: Updated feedback colors */}
-                const feedbackClass = feedback && isSelected ? (feedback === 'correct' ? 'bg-emerald-100 border-emerald-500' : 'bg-rose-100 border-rose-500') : '';
+                {/* Change: Use chart and destructive colors for feedback */}
+                const feedbackClass = feedback && isSelected ? (feedback === 'correct' ? 'bg-chart-1/20 border-chart-1' : 'bg-destructive/20 border-destructive') : '';
                 
                 if (event.isPlaced) {
                     return (
-                    // --- Color Change: Softer, earthy green for success ---
-                    <div key={event.id} className="p-3 rounded-lg bg-emerald-50 border border-emerald-300 flex items-center gap-4">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0"/>
+                    // Change: Use chart-1 color for success/placed items
+                    <div key={event.id} className="p-3 rounded-lg bg-chart-1/10 border border-chart-1/50 flex items-center gap-4">
+                        <CheckCircle2 className="h-6 w-6 text-chart-1 flex-shrink-0"/>
                         <div>
-                            <h4 className="font-semibold text-emerald-900">{event.name}</h4>
-                            <p className="text-sm font-bold text-emerald-700">Score: {event.score}pts</p>
+                            <h4 className="font-semibold text-foreground">{event.name}</h4>
+                            <p className="text-sm font-bold text-primary">Score: {event.score}pts</p>
                         </div>
                     </div>
                     );
@@ -246,14 +247,14 @@ export function InteractiveHistoricalMap({
                     <div
                     key={event.id}
                     onClick={() => handleEventSelectForPlacement(event)}
-                    // --- Color Change: New hover, selection, and default colors ---
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ease-in-out hover:border-teal-600 hover:shadow-md
-                        ${isSelected ? 'border-amber-500 scale-105 shadow-xl bg-white' : 'border-gray-200 bg-stone-50'}
+                    // Change: Use official border, accent, and background colors
+                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ease-in-out hover:border-primary hover:shadow-md
+                        ${isSelected ? 'border-star scale-105 shadow-xl bg-card' : 'border-border bg-muted'}
                         ${feedbackClass}`}
                     >
-                    <h4 className="font-bold">{event.name}</h4>
-                    {/* Color Change */}
-                    <p className="text-sm text-stone-600 mt-1">{event.description}</p>
+                    <h4 className="font-bold text-foreground">{event.name}</h4>
+                    {/* Change: Use muted foreground for description text */}
+                    <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
                     </div>
                 );
                 })}
@@ -263,12 +264,11 @@ export function InteractiveHistoricalMap({
             <Card className="border-2 shadow-xl sticky top-6">
                 <CardHeader className="pb-2"><CardTitle className="text-xl flex items-center gap-2"><Clock className="h-5 w-5" />Temporal Navigator</CardTitle></CardHeader>
                 <CardContent className="space-y-4 pt-2 text-center">
-                    {/* Color Change */}
-                    <p className="text-sm text-stone-500">Select a year</p>
-                    {/* Color Change */}
-                    <div className="bg-stone-100 p-2 rounded-lg border">
-                        {/* Color Change */}
-                        <div className="text-center font-bold text-5xl text-teal-800 tracking-wider">{currentYear}</div>
+                    {/* Change: Use muted foreground for secondary text */}
+                    <p className="text-sm text-muted-foreground">Select a year</p>
+                    {/* Change: Use muted background and primary text */}
+                    <div className="bg-muted p-2 rounded-lg border">
+                        <div className="text-center font-bold text-5xl text-primary tracking-wider">{currentYear}</div>
                     </div>
                     <Slider value={[currentYear]} onValueChange={(v) => setCurrentYear(v[0])} min={1917} max={2024} step={1} />
                     <Button 
@@ -291,26 +291,25 @@ export function InteractiveHistoricalMap({
             <CardHeader>
               {gameStatus === 'won' ? (
                 <>
-                  {/* Color Change */}
-                  <Trophy className="w-16 h-16 text-amber-500 mx-auto animate-bounce" />
-                  {/* Color Change */}
-                  <CardTitle className="text-4xl font-black text-emerald-700 mt-4">Level Complete!</CardTitle>
+                  {/* Change: Use star color for trophy icon */}
+                  <Trophy className="w-16 h-16 text-star mx-auto animate-bounce" />
+                  {/* Change: Use chart-1 color for success title */}
+                  <CardTitle className="text-4xl font-black text-chart-1 mt-4">Level Complete!</CardTitle>
                 </>
               ) : (
                 <>
-                  {/* Color Change */}
-                  <XCircle className="w-16 h-16 text-rose-600 mx-auto" />
-                  {/* Color Change */}
-                  <CardTitle className="text-4xl font-black text-rose-700 mt-4">Level Failed</CardTitle>
+                  {/* Change: Use destructive color for failure icon and title */}
+                  <XCircle className="w-16 h-16 text-destructive mx-auto" />
+                  <CardTitle className="text-4xl font-black text-destructive mt-4">Level Failed</CardTitle>
                 </>
               )}
             </CardHeader>
             <CardContent className="space-y-6 px-8 pb-8">
-              {/* Color Change */}
-              <div className="text-lg text-stone-600">
+              {/* Change: Use muted foreground for secondary text */}
+              <div className="text-lg text-muted-foreground">
                 <p>Your final score is:</p>
-                {/* Color Change */}
-                <p className="text-5xl font-bold text-teal-800 my-2">{gameState.totalScore}</p>
+                {/* Change: Use primary for the score text */}
+                <p className="text-5xl font-bold text-primary my-2">{gameState.totalScore}</p>
                 <p className="text-sm">(Passing score was {passingScore})</p>
               </div>
               {gameStatus === 'won' ? (
