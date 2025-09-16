@@ -1,64 +1,84 @@
-import { InteractiveHistoricalMap } from "@/components/map-game/interactive-historical-game";
+import Link from "next/link";
+import { ArrowRight, HelpCircle, Map } from "lucide-react";
 
-// Sample historical events for demonstration
-const sampleEvents = [
-  {
-    id: "1",
-    name: "French Revolution",
-    description: "A period of radical political and societal change in France",
-    startDate: new Date("1789-07-14"),
-    endDate: new Date("1799-11-09"),
-    location: "France",
-    coordinates: "48.8566,2.3522",
-    actors: [
-      { name: "Maximilien Robespierre", role: "leader" },
-      { name: "Louis XVI", role: "victim" },
-    ],
-  },
-  {
-    id: "2",
-    name: "Battle of Trafalgar",
-    description: "Naval engagement between British and Franco-Spanish fleets",
-    startDate: new Date("1805-10-21"),
-    location: "Spain",
-    coordinates: "36.1833,-6.0167",
-    actors: [
-      { name: "Admiral Nelson", role: "leader" },
-      { name: "Napoleon Bonaparte", role: "opponent" },
-    ],
-  },
-  {
-    id: "3",
-    name: "Congress of Vienna",
-    description: "Conference to provide a long-term peace plan for Europe",
-    startDate: new Date("1814-09-01"),
-    endDate: new Date("1815-06-09"),
-    location: "Austria",
-    coordinates: "48.2082,16.3738",
-    actors: [
-      { name: "Klemens von Metternich", role: "organizer" },
-      { name: "Tsar Alexander I", role: "participant" },
-    ],
-  },
+// We can add an Icon component to our data structure for a richer UI
+const games: {
+	title: string;
+	href: string;
+	description: string;
+	icon: React.ElementType; // The type for a React component
+}[] = [
+	{
+		title: "Historical Quizzes",
+		href: "/games/quiz",
+		description:
+			"Test what you know, challenge what you think, and learn something new about Palestine's rich history.",
+		icon: HelpCircle,
+	},
+	{
+		title: "Map Discovery",
+		href: "/games/map",
+		description:
+			"Explore an interactive map of Palestine, uncovering key locations, stories, and historical significance.",
+		icon: Map,
+	},
+	// You can easily add more games here in the future
+	// {
+	// 	title: "Timeline Challenge",
+	// 	href: "/games/timeline",
+	// 	description: "Place historical events in the correct order to build a complete picture of the past.",
+	// 	icon: GanttChartSquare,
+	// },
 ];
-export default function MapsPage() {
-  return (
-    <div className="space-y-6 p-16">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">
-          Interactive Historical Maps
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Explore historical events through interactive maps with timeline
-          controls
-        </p>
-      </div>
 
-      <InteractiveHistoricalMap
-        events={sampleEvents as any}
-        selectedYear={1800}
-        gameMode={true}
-      />
-    </div>
-  );
+export default function GamesHubPage() {
+	return (
+		<main className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
+			{/* Page Header */}
+			<div className="text-center mb-12">
+				<h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+					Games Hub
+				</h1>
+				<p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
+					Engage with history in a new way. Choose a game below to start your
+					interactive journey.
+				</p>
+			</div>
+
+			{/* Games Grid */}
+			<div className="grid grid-cols-1 gap-8 md:grid-cols-2 max-w-4xl mx-auto">
+				{games.map((game) => {
+					const Icon = game.icon;
+					return (
+						<Link
+							key={game.title}
+							href={game.href}
+							className="group block rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+						>
+							<div className="flex flex-col justify-between h-full p-6">
+								<div>
+									<div className="mb-4">
+										<Icon
+											className="h-10 w-10 text-primary"
+											strokeWidth={1.5}
+										/>
+									</div>
+									<h2 className="text-xl font-semibold tracking-tight text-foreground">
+										{game.title}
+									</h2>
+									<p className="mt-2 text-muted-foreground">
+										{game.description}
+									</p>
+								</div>
+								<div className="mt-6 flex items-center font-medium text-primary transition-transform group-hover:translate-x-1">
+									Play Now
+									<ArrowRight className="ml-2 h-4 w-4" />
+								</div>
+							</div>
+						</Link>
+					);
+				})}
+			</div>
+		</main>
+	);
 }

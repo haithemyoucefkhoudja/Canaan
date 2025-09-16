@@ -19,14 +19,8 @@ import { AuthStatus, navItems } from "@/components/auth.status";
 
 const components: { title: string; href: string; description: string }[] = [
 	{
-		title: "Bingo",
-		href: "/games/bingo",
-		description:
-			"Discover history in a fun way  every round brings forgotten moments back to life",
-	},
-	{
 		title: "Historical Quizzes",
-		href: "/games/quizz",
+		href: "/games/quiz",
 		description:
 			"Test what you know, challenge what you think, and learn something new about Palestine",
 	},

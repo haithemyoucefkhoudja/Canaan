@@ -1,17 +1,8 @@
 import { HomeSidebar } from "@/components/layout/sidebar/home-sidebar";
 import LevelDrop from "@/components/gamification/level-drop";
-import { Landmark, HelpCircle, MapPin } from "lucide-react";
+import { HelpCircle, MapPin } from "lucide-react";
 
-// --- Data ---
 const featuredGames = [
-	{
-		id: "1",
-		title: "Palastine Bingo",
-		handle: "/games/bingo",
-		description:
-			"Test your knowledge of ancient history through interactive bingo.",
-		icon: <Landmark />,
-	},
 	{
 		id: "2",
 		title: "History Quiz",
@@ -22,7 +13,7 @@ const featuredGames = [
 	{
 		id: "3",
 		title: "Map Discovery",
-		handle: "/games/map-discovery",
+		handle: "/games/map",
 		description:
 			"Learn about historical discoveries and significant places on the map.",
 		icon: <MapPin />,

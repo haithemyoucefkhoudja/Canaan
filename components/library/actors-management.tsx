@@ -1,19 +1,19 @@
-
 "use client";
 
 import { useState } from "react";
 import { useActors } from "@/hooks/useActors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Search, User, Eye } from "lucide-react";
-
-type Actor = {
-  id: string;
-  name: string;
-  bio: string;
-};
+import { Actor } from "@prisma/client";
+import { RichTextReader } from "../text-editor/rich-text-reader";
 
 export function ActorsManagement() {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -22,9 +22,10 @@ export function ActorsManagement() {
 
 	const { data: actors = [], isLoading, error } = useActors();
 
-	const filteredActors = actors.filter((actor) =>
-		actor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-		actor.bio?.toLowerCase().includes(searchTerm.toLowerCase())
+	const filteredActors = actors.filter(
+		(actor) =>
+			actor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			actor.description?.toLowerCase().includes(searchTerm.toLowerCase())
 	);
 
 	const handleViewActor = (actor: Actor) => {
@@ -46,7 +47,11 @@ export function ActorsManagement() {
 	}
 
 	if (error) {
-		return <p className="text-destructive p-8">Error loading actors: {error.message}</p>;
+		return (
+			<p className="text-destructive p-8">
+				Error loading actors: {error.message}
+			</p>
+		);
 	}
 
 	return (
@@ -68,15 +73,17 @@ export function ActorsManagement() {
 			<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 				{filteredActors.map((actor) => (
 					// FINAL HOVER EFFECT: This combines the pop-up, shadow, and green border color
-					<Card 
-						key={actor.id} 
+					<Card
+						key={actor.id}
 						className="bg-card border-2 border-slate-800 transition-all duration-300 ease-in-out hover:border-green-500 hover:shadow-xl hover:scale-[1.02]"
 					>
 						<CardHeader>
 							<CardTitle className="text-lg">{actor.name}</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<p className="text-sm text-muted-foreground line-clamp-4 h-20">{actor.bio}</p>
+							<p className="text-sm text-muted-foreground line-clamp-4 h-20">
+								{actor.bio}
+							</p>
 							<div className="flex items-center gap-2 pt-2">
 								<Button
 									variant="outline"
@@ -99,7 +106,9 @@ export function ActorsManagement() {
 					<CardContent className="flex flex-col items-center justify-center py-16">
 						<User className="h-12 w-12 text-muted-foreground mb-4" />
 						<h3 className="text-lg font-semibold mb-2">No actors found</h3>
-						<p className="text-muted-foreground text-center">Try adjusting your search terms.</p>
+						<p className="text-muted-foreground text-center">
+							Try adjusting your search terms.
+						</p>
 					</CardContent>
 				</Card>
 			)}
@@ -110,10 +119,12 @@ export function ActorsManagement() {
 					{selectedActor && (
 						<>
 							<DialogHeader>
-								<DialogTitle className="text-2xl">{selectedActor.name}</DialogTitle>
+								<DialogTitle className="text-2xl">
+									{selectedActor.name}
+								</DialogTitle>
 							</DialogHeader>
 							<div className="py-4">
-								<p className="text-muted-foreground whitespace-pre-wrap">{selectedActor.bio}</p>
+								<RichTextReader content={selectedActor.description} />
 							</div>
 						</>
 					)}

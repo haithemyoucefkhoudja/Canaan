@@ -12,7 +12,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Play, Network } from "lucide-react";
-import { ThemeToggle } from "@/components/quiz-game/theme-toggle";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -45,9 +44,6 @@ export default function Home() {
 	if (showModeSelector) {
 		return (
 			<>
-				<div className="absolute top-4 right-4 z-10">
-					<ThemeToggle />
-				</div>
 				<GameModeSelector
 					onModeSelect={handleModeSelect}
 					onBack={() => setShowModeSelector(false)}
@@ -59,14 +55,10 @@ export default function Home() {
 	if (!gameStarted) {
 		return (
 			<div className="min-h-screen bg-background  flex items-center justify-center p-4">
-				<div className="absolute top-4 right-4 z-10">
-					<ThemeToggle />
-				</div>
-
 				<Card className="w-full max-w-2xl shadow-2xl border-0  backdrop-blur-sm">
 					<CardHeader className="text-center space-y-4">
 						<div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center">
-							<Network className="w-8 h-8 text-white" />
+							<Network className="w-8 h-8" />
 						</div>
 						<CardTitle className="text-3xl font-bold  bg-clip-text text-primary">
 							Palestinian History Mind Map

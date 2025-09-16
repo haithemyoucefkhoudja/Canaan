@@ -35,7 +35,7 @@ export default function EventCard({
 				<CardHeader>
 					<CardTitle className="text-slate-50">{event.name}</CardTitle>
 					<CardDescription className="text-slate-400">
-						{format(new Date(event.start_date), "yyyy-mm-dd")}
+						{format(new Date(event.start_date), "yyyy-MM-dd")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>

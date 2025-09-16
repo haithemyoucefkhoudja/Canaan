@@ -37,12 +37,16 @@ const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const EventCard: React.FC<{ event: Event }> = ({ event }) => {
 	return (
-		<Card className="hover:shadow-lg hover:-translate-y-1 bg-gradient-to-br from-card to-muted/30">
+		<Card className="hover:shadow-lg hover:-translate-y-1 ">
 			<CardHeader>
 				<CardTitle>{event.name}</CardTitle>
 				<div className="flex items-center text-sm text-muted-foreground pt-2">
 					<CalendarIcon className="mr-2 h-4 w-4" />
-					<span>{format(new Date(event.start_date as any), "yyyy")}</span>
+					{event.start_date && (
+						<span>
+							{format(new Date(event.start_date as any), "yyyy-mm-dd")}
+						</span>
+					)}
 					{event.end_date && <span className="mx-2">-</span>}
 					{event.end_date && (
 						<span>{format(new Date(event.end_date as any), "yyyy")}</span>
@@ -60,10 +64,7 @@ const EventCard: React.FC<{ event: Event }> = ({ event }) => {
 				</div>
 				{/* UPDATED: Link now points to /library/events */}
 				<Link href="/library/events" passHref className="w-full">
-					<Button
-						variant="outline"
-						className="w-full mt-2 text-green-400 border-green-500 hover:bg-green-500 hover:text-slate-900 transition-colors"
-					>
+					<Button variant="outline" className="w-full mt-2 transition-colors">
 						Explore All Events
 						<ArrowRight className="h-4 w-4 ml-2" />
 					</Button>

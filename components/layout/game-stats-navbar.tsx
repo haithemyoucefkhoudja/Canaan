@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, Trophy, Medal, Star, RotateCcwIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
+import ThemeIndicator from "../theme-indicator";
 
 // A small component to handle the countdown logic
 const HeartTimer = ({ regenTime }: { regenTime: string }) => {
@@ -72,8 +73,8 @@ export function GameStatsNavbar() {
 	);
 
 	return (
-		<header className="sticky top-0 z-30 w-full border-b bg-card/80 backdrop-blur-sm">
-			<div className="container flex items-center justify-between h-14">
+		<header className="sticky top-10 z-30 w-full">
+			<div className="container flex items-center justify-between h-14 bg-background/80 backdrop-blur-lg py-8 rounded-full drop-shadow-lg">
 				<div className="text-lg font-bold capitalize">
 					{stats?.game_type || "Games"}
 				</div>
@@ -122,6 +123,7 @@ export function GameStatsNavbar() {
 							</>
 						)
 					)}
+					<ThemeIndicator />
 				</div>
 			</div>
 		</header>

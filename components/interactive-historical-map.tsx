@@ -28,6 +28,7 @@ import "@maplibre/maplibre-gl-leaflet";
 // @ts-ignore
 import { filterByDate } from "@openhistoricalmap/maplibre-gl-dates";
 import { EventWLinks } from "@/types/events";
+import { RichTextReader } from "./text-editor/rich-text-reader";
 
 // --- DYNAMIC CONFIGURATION ---
 const MIN_YEAR = 1700;
@@ -177,11 +178,7 @@ export function InteractiveHistoricalMap({
 					.bindPopup(
 						`<div class="max-w-xs p-4 bg-card border-2 border-border rounded-lg shadow-xl"><div class="flex items-start gap-3"><div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2L13 8H17L12 12L14 18L10 15L6 18L8 12L3 8H7L10 2Z"/></svg></div><div class="flex-1"><h4 class="font-bold text-card-foreground mb-2 text-lg leading-tight">${
 							event.name
-						}</h4>${
-							event.description
-								? `<p class="text-muted-foreground text-sm mb-3 leading-relaxed">${event.description}</p>`
-								: ""
-						}<div class="flex items-center gap-2">${
+						}</h4><div class="flex items-center gap-2">${
 							event.start_date
 								? `<span class="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold shadow-md">${new Date(
 										event.start_date
@@ -318,9 +315,7 @@ export function InteractiveHistoricalMap({
 
 								{selectedEvent.description && (
 									<div className="p-4 bg-muted rounded-lg border-2">
-										<p className="text-sm leading-relaxed">
-											{selectedEvent.description}
-										</p>
+										<RichTextReader content={selectedEvent.description} />
 									</div>
 								)}
 
