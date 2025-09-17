@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useState, useEffect } from "react";
+
 // Fix for default icon issue with Webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -20,6 +21,7 @@ type Event = {
   position: [number, number];
 };
 type EventList = Event[];
+
 const HistoricalMap = ({ events }: { events: EventList }) => {
   const [groupedEvents, setGroupedEvents] = useState<Record<string, EventList>>(
     {}
@@ -59,6 +61,7 @@ const HistoricalMap = ({ events }: { events: EventList }) => {
     </MapContainer>
   );
 };
+
 const EventCarousel = ({ events }: { events: EventList }) => {
   const [selectedEvent, setSelectedEvent] = useState<number>(0);
   const handleNextEventSelect = () => {
@@ -83,15 +86,15 @@ const EventCarousel = ({ events }: { events: EventList }) => {
         <div className="flex gap-2">
           <button
             disabled={selectedEvent === 0}
-            className="bg-blue-500 text-white p-2 rounded disabled:bg-gray-400"
             onClick={() => handlePrevEventSelect()}
+            // Removed: bg-blue-500 text-white p-2 rounded disabled:bg-gray-400
           >
             Previous
           </button>
           <button
             disabled={selectedEvent === events.length - 1}
-            className="bg-blue-500 text-white p-2 rounded disabled:bg-gray-400"
             onClick={() => handleNextEventSelect()}
+            // Removed: bg-blue-500 text-white p-2 rounded disabled:bg-gray-400
           >
             Next
           </button>
@@ -99,11 +102,12 @@ const EventCarousel = ({ events }: { events: EventList }) => {
       )}
       {selectedEvent < events.length && (
         <div>
-          <h3 className="text-lg font-bold">{events[selectedEvent].title}</h3>
+          {/* Removed: text-lg font-bold */}
+          <h3>{events[selectedEvent].title}</h3>
           <h3>position: {events[selectedEvent].position}</h3>
           <p>
-            <span className="font-bold">Date:</span>{" "}
-            {events[selectedEvent].date}
+            {/* Removed: font-bold */}
+            <span>Date:</span> {events[selectedEvent].date}
           </p>
           <p>{events[selectedEvent].description}</p>
         </div>
@@ -111,4 +115,5 @@ const EventCarousel = ({ events }: { events: EventList }) => {
     </div>
   );
 };
+
 export default HistoricalMap;

@@ -37,12 +37,14 @@ export function AchievementModal({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="max-w-md bg-card border-border fixed bottom-4 right-4 top-auto left-auto translate-x-0 translate-y-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2">
-				<DialogHeader className="text-center pb-4">
-					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-						<Trophy className="h-8 w-8 text-primary" />
+			{/* Removed specific positioning, bg, border, and animation classes. */}
+			{/* These should be styled globally on the DialogContent component. */}
+			<DialogContent className="max-w-md data-[state=open]:animate-in data-[state=closed]:animate-out">
+				<DialogHeader className="pb-4">
+					<div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
+						<Trophy className="h-8 w-8" />
 					</div>
-					<DialogTitle className="text-2xl font-bold text-foreground">
+					<DialogTitle> {/* Removed font and color styles */}
 						{achievements.length === 1
 							? "Achievement Unlocked!"
 							: "Achievements Unlocked!"}
@@ -52,9 +54,10 @@ export function AchievementModal({
 				<div className="space-y-4">
 					{achievements.map((achievement, index) => (
 						<div key={achievement.id}>
-							<div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 border border-border">
+							{/* Removed rounded, bg, and border styles */}
+							<div className="flex items-start gap-4 p-4">
 								<div className="flex-shrink-0">
-									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-2xl">
+									<div className="flex h-12 w-12 items-center justify-center text-2xl">
 										<Avatar>
 											<AvatarImage
 												src={achievement.icon}
@@ -68,18 +71,15 @@ export function AchievementModal({
 								</div>
 								<div className="flex-1 min-w-0">
 									<div className="flex items-center gap-2 mb-1">
-										<h3 className="font-semibold text-foreground truncate">
+										<h3 className="truncate"> {/* Removed font and color */}
 											{achievement.name}
 										</h3>
-										<Badge
-											variant="secondary"
-											className="flex items-center gap-1"
-										>
+										<Badge className="flex items-center gap-1"> {/* Removed variant */}
 											<Star className="h-3 w-3" />
 											{achievement.xp_bonus} XP
 										</Badge>
 									</div>
-									<p className="text-sm text-muted-foreground">
+									<p> {/* Removed text size and color */}
 										{achievement.description}
 									</p>
 								</div>
@@ -93,9 +93,10 @@ export function AchievementModal({
 					{totalXp > 0 && (
 						<>
 							<Separator />
-							<div className="flex items-center justify-center gap-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
-								<Zap className="h-5 w-5 text-primary" />
-								<span className="font-semibold text-foreground">
+							{/* Removed rounded, bg, and border styles */}
+							<div className="flex items-center justify-center gap-2 p-4">
+								<Zap className="h-5 w-5" />
+								<span> {/* Removed font and color */}
 									Total XP Gained: {totalXp}
 								</span>
 							</div>
@@ -103,7 +104,7 @@ export function AchievementModal({
 					)}
 
 					<div className="flex justify-center pt-4">
-						<Button onClick={onClose} className="min-w-32">
+						<Button onClick={onClose}>
 							<X className="h-4 w-4 mr-2" />
 							Close
 						</Button>
